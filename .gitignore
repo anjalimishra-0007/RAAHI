@@ -1,0 +1,49 @@
+# Virtual environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# IDE & Editor files
+.idea/
+.vscode/
+
+# Logs & temporary files
+*.log
+logs/
+temp/
+tmp/
+
+# Captures / media output
+*.mp4
+*.avi
+*.mkv
+*.jpg
+*.jpeg
+*.png
+captures/
+recordings/
+
+# Local overrides / machine specific
+local_config.yaml
+.env
+mediamtx.log
+
+# TLS certificates / private keys
+*.key
+*.crt
+*.pem

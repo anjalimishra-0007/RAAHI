@@ -1,0 +1,39 @@
+# RAAHI Edge Configuration
+# Configure RTSP parameters, display settings, and stream expectations
+
+stream:
+  # RTSP server network endpoint
+  # S23 FE publishes to rtsp://<rtsp_host>:<rtsp_port>/<rtsp_path>
+  # Receiver connects to rtsp://<rtsp_host>:<rtsp_port>/<rtsp_path>
+  rtsp_host: "127.0.0.1"
+  rtsp_port: 8555
+  rtsp_path: "live"
+  
+  # RTSP transport protocol: "tcp" or "udp"
+  # TCP is strongly recommended for Wi-Fi to eliminate packet drops and visual tearing
+  transport: "tcp"
+  
+  # Reconnection & timeout settings
+  reconnect_delay_sec: 2.0
+  max_reconnect_attempts: 0  # 0 = infinite retries
+  read_timeout_sec: 5.0      # Treat stream as stalled if no frames arrive for this duration
+  
+  # OpenCV capture buffer: 1 to minimize latency (disables ffmpeg internal queue lag)
+  buffer_size: 1
+
+camera:
+  # Expected stream properties from Android RootEncoder (for telemetry / sanity checks)
+  expected_width: 1920
+  expected_height: 1080
+  expected_fps: 30
+
+display:
+  # GUI window settings
+  window_name: "RAAHI Edge AI - S23 FE Live Camera Feed"
+  show_diagnostics: true
+  fullscreen: false
+  # Display downscale factor if resolution is larger than screen (1.0 = original)
+  scale_factor: 0.75
+
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
