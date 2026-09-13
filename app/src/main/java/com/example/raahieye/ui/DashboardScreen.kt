@@ -72,6 +72,8 @@ fun DashboardScreen(viewModel: RaahiViewModel = viewModel()) {
         }
     }
 
+    var showSettingsDialog by remember { mutableStateOf(false) }
+
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -88,14 +90,24 @@ fun DashboardScreen(viewModel: RaahiViewModel = viewModel()) {
             streamState = streamState, gpsData = gpsData, networkInfo = networkInfo, busId = busId,
             isDark = isDark, bgColor = bgColor, cardBgColor = cardBgColor, cardBorderColor = cardBorderColor,
             textPrimary = textPrimary, textSecondary = textSecondary,
-            onSettingsClick = onThemeToggle, onToggleStream = { viewModel.toggleStream() }
+            onSettingsClick = { showSettingsDialog = true }, onToggleStream = { viewModel.toggleStream() }
         )
     } else {
         PortraitDashboard(
             streamState = streamState, gpsData = gpsData, networkInfo = networkInfo, busId = busId,
             isDark = isDark, bgColor = bgColor, cardBgColor = cardBgColor, cardBorderColor = cardBorderColor,
             textPrimary = textPrimary, textSecondary = textSecondary,
-            onSettingsClick = onThemeToggle, onToggleStream = { viewModel.toggleStream() }
+            onSettingsClick = { showSettingsDialog = true }, onToggleStream = { viewModel.toggleStream() }
+        )
+    }
+
+    if (showSettingsDialog) {
+        SettingsDialog(
+            viewModel = viewModel,
+            isDark = isDark,
+            currentTheme = currentTheme,
+            onThemeToggle = onThemeToggle,
+            onDismiss = { showSettingsDialog = false }
         )
     }
 }
@@ -204,7 +216,7 @@ fun PortraitDashboard(
     textPrimary: Color, textSecondary: Color, onSettingsClick: () -> Unit, onToggleStream: () -> Unit
 ) {
     Scaffold(
-        bottomBar = { BottomNavBar(isDark, bgColor, cardBorderColor) },
+        bottomBar = { BottomNavBar(isDark, bgColor, cardBorderColor, onSettingsClick = onSettingsClick) },
         containerColor = bgColor
     ) { paddingValues ->
         Column(
@@ -531,7 +543,7 @@ fun QuickActionButton(icon: ImageVector, label: String, bg: Color, border: Color
 }
 
 @Composable
-fun BottomNavBar(isDark: Boolean, bgColor: Color, borderColor: Color) {
+fun BottomNavBar(isDark: Boolean, bgColor: Color, borderColor: Color, onSettingsClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -544,14 +556,17 @@ fun BottomNavBar(isDark: Boolean, bgColor: Color, borderColor: Color) {
         BottomNavItem(Icons.Rounded.Home, "Home", isSelected = true, isDark = isDark)
         BottomNavItem(Icons.Rounded.FormatListBulleted, "Events", isSelected = false, isDark = isDark)
         BottomNavItem(Icons.Rounded.Map, "Map", isSelected = false, isDark = isDark)
-        BottomNavItem(Icons.Rounded.Settings, "Settings", isSelected = false, isDark = isDark)
+        BottomNavItem(Icons.Rounded.Settings, "Settings", isSelected = false, isDark = isDark, onClick = onSettingsClick)
     }
 }
 
 @Composable
-fun BottomNavItem(icon: ImageVector, label: String, isSelected: Boolean, isDark: Boolean) {
+fun BottomNavItem(icon: ImageVector, label: String, isSelected: Boolean, isDark: Boolean, onClick: () -> Unit = {}) {
     val tint = if (isSelected) Color(0xFF5E5CE6) else if (isDark) Color.Gray else Color.LightGray
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { onClick() }
+    ) {
         Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(22.dp))
         Spacer(modifier = Modifier.height(4.dp))
         Text(label, color = tint, fontSize = 10.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium)

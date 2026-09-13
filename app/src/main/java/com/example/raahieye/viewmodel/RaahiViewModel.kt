@@ -10,6 +10,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.raahieye.model.GpsData
 import com.example.raahieye.model.NetworkInfo
+import com.example.raahieye.model.RtspConfig
+import com.example.raahieye.model.SettingsRepository
 import com.example.raahieye.model.StreamState
 import com.pedro.common.ConnectChecker
 import com.pedro.library.rtsp.RtspStream
@@ -33,8 +35,8 @@ class RaahiViewModel(application: Application) : AndroidViewModel(application), 
     private val _busId = MutableStateFlow("RAAHI-BUS-01")
     val busId: StateFlow<String> = _busId.asStateFlow()
 
-    // The MacBook RAAHI Edge IP (Configurable via Settings later; defaults to 10.0.2.2 on emulator for host loopback)
-    private val isEmulator = android.os.Build.FINGERPRINT.startsWith("generic")
+    // Emulator detection for default loopback host (10.0.2.2 vs 127.0.0.1)
+    val isEmulator = android.os.Build.FINGERPRINT.startsWith("generic")
             || android.os.Build.FINGERPRINT.startsWith("unknown")
             || android.os.Build.MODEL.contains("google_sdk")
             || android.os.Build.MODEL.contains("Emulator")
@@ -42,11 +44,39 @@ class RaahiViewModel(application: Application) : AndroidViewModel(application), 
             || android.os.Build.HARDWARE.contains("goldfish")
             || android.os.Build.HARDWARE.contains("ranchu")
 
-    private val _edgeIp = MutableStateFlow(if (isEmulator) "10.0.2.2" else "127.0.0.1")
+    private val settingsRepository = SettingsRepository(application, isEmulator)
+
+    private val _rtspConfig = MutableStateFlow(settingsRepository.defaultRtspConfig)
+    val rtspConfig: StateFlow<RtspConfig> = _rtspConfig.asStateFlow()
+
+    // Backward-compatible edgeIp StateFlow reflecting the current configured host
+    private val _edgeIp = MutableStateFlow(settingsRepository.defaultHost)
     val edgeIp: StateFlow<String> = _edgeIp.asStateFlow()
 
     fun setEdgeIp(ip: String) {
-        _edgeIp.value = ip
+        updateRtspConfig(host = ip, port = _rtspConfig.value.port, path = _rtspConfig.value.path)
+    }
+
+    fun updateRtspConfig(host: String, port: Int, path: String) {
+        val newConfig = RtspConfig(
+            host = host.trim().removePrefix("rtsp://").trimEnd('/'),
+            port = port,
+            path = path.trim().trim('/')
+        )
+        _rtspConfig.value = newConfig
+        _edgeIp.value = newConfig.host
+        viewModelScope.launch {
+            settingsRepository.saveRtspConfig(newConfig)
+        }
+    }
+
+    fun resetRtspConfigToDefault() {
+        val defaultConfig = settingsRepository.defaultRtspConfig
+        _rtspConfig.value = defaultConfig
+        _edgeIp.value = defaultConfig.host
+        viewModelScope.launch {
+            settingsRepository.resetToDefault()
+        }
     }
 
     // RtspStream (StreamBase) is the modern RootEncoder 2.8+ standard
@@ -56,6 +86,12 @@ class RaahiViewModel(application: Application) : AndroidViewModel(application), 
 
     init {
         isPrepared = prepareEncoders()
+        viewModelScope.launch {
+            settingsRepository.rtspConfigFlow.collect { savedConfig ->
+                _rtspConfig.value = savedConfig
+                _edgeIp.value = savedConfig.host
+            }
+        }
     }
 
     private fun prepareEncoders(): Boolean {
@@ -207,11 +243,12 @@ class RaahiViewModel(application: Application) : AndroidViewModel(application), 
 
         if (!rtspStream.isStreaming) {
             _streamState.value = StreamState.CONNECTING
-            val port = if (isEmulator || _edgeIp.value == "127.0.0.1") 8555 else 8554
-            val url = "rtsp://${_edgeIp.value}:$port/live"
+            val url = _rtspConfig.value.fullUrl
+            android.util.Log.i("RAAHI_RTSP_STREAM", "Connecting to configured RTSP destination: $url")
             try {
                 rtspStream.startStream(url)
             } catch (e: Exception) {
+                android.util.Log.e("RAAHI_RTSP_STREAM", "Failed to start stream to $url", e)
                 _streamState.value = StreamState.ERROR
             }
         }
