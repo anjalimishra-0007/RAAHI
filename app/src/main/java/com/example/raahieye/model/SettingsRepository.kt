@@ -18,6 +18,9 @@ class SettingsRepository(private val context: Context, private val isEmulator: B
         val EDGE_HOST = stringPreferencesKey("edge_host")
         val EDGE_PORT = intPreferencesKey("edge_port")
         val EDGE_PATH = stringPreferencesKey("edge_path")
+        val THEME_MODE = stringPreferencesKey("theme_mode")
+        val APP_ICON_MODE = stringPreferencesKey("app_icon_mode")
+        val APP_ICON_MANUAL_CHOICE = stringPreferencesKey("app_icon_manual_choice")
     }
 
     val defaultHost: String = if (isEmulator) "10.0.2.2" else "127.0.0.1"
@@ -35,6 +38,52 @@ class SettingsRepository(private val context: Context, private val isEmulator: B
         val port = preferences[PreferencesKeys.EDGE_PORT] ?: defaultPort
         val path = preferences[PreferencesKeys.EDGE_PATH] ?: defaultPath
         RtspConfig(host = host, port = port, path = path)
+    }
+
+    val themeModeFlow: Flow<AppThemeMode> = context.dataStore.data.map { preferences ->
+        val savedTheme = preferences[PreferencesKeys.THEME_MODE]
+        when (savedTheme) {
+            "LIGHT" -> AppThemeMode.LIGHT
+            "DARK" -> AppThemeMode.DARK
+            "OLED" -> AppThemeMode.OLED
+            else -> AppThemeMode.OLED // Default to OLED for automotive / field appliance
+        }
+    }
+
+    val appIconModeFlow: Flow<AppIconMode> = context.dataStore.data.map { preferences ->
+        val savedMode = preferences[PreferencesKeys.APP_ICON_MODE]
+        when (savedMode) {
+            "MANUAL" -> AppIconMode.MANUAL
+            else -> AppIconMode.AUTOMATIC // Default to Automatic
+        }
+    }
+
+    val appIconManualChoiceFlow: Flow<AppIconChoice> = context.dataStore.data.map { preferences ->
+        val savedChoice = preferences[PreferencesKeys.APP_ICON_MANUAL_CHOICE]
+        when (savedChoice) {
+            "LIGHT" -> AppIconChoice.LIGHT
+            "DARK" -> AppIconChoice.DARK
+            "OLED" -> AppIconChoice.OLED
+            else -> AppIconChoice.OLED // Default manual choice
+        }
+    }
+
+    suspend fun saveThemeMode(mode: AppThemeMode) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.THEME_MODE] = mode.name
+        }
+    }
+
+    suspend fun saveAppIconMode(mode: AppIconMode) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.APP_ICON_MODE] = mode.name
+        }
+    }
+
+    suspend fun saveAppIconManualChoice(choice: AppIconChoice) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.APP_ICON_MANUAL_CHOICE] = choice.name
+        }
     }
 
     suspend fun saveRtspConfig(config: RtspConfig) {

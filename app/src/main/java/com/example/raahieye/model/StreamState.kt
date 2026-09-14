@@ -16,8 +16,33 @@ data class GpsData(
     val timestamp: String = ""
 )
 
+enum class AppThemeMode {
+    LIGHT,
+    DARK,
+    OLED
+}
+
+enum class AppIconMode {
+    AUTOMATIC,
+    MANUAL
+}
+
+enum class AppIconChoice {
+    LIGHT,
+    DARK,
+    OLED
+}
+
+data class StreamStats(
+    val measuredFps: Int = 0,
+    val measuredBitrateBps: Long = 0L,
+    val codec: String = "H.264",
+    val resolution: String = "1080p",
+    val bitrateFormatted: String = "--"
+)
+
 data class NetworkInfo(
     val isConnected: Boolean = false,
-    val type: String = "Unknown",
-    val localIp: String = "0.0.0.0"
+    val type: String = "Not connected",
+    val localIp: String = "—"
 )

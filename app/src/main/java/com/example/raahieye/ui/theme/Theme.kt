@@ -16,12 +16,27 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
+import com.example.raahieye.model.AppThemeMode
+
 private val DarkColorScheme = darkColorScheme(
     primary = PastelBlue,
     secondary = PastelGreen,
     tertiary = PastelRed,
-    background = Color.Black,
+    background = Color(0xFF121214),
     surface = DarkSurface,
+    onPrimary = PureWhite,
+    onSecondary = PureWhite,
+    onTertiary = PureWhite,
+    onBackground = PureWhite,
+    onSurface = PureWhite
+)
+
+private val OledColorScheme = darkColorScheme(
+    primary = PastelBlue,
+    secondary = PastelGreen,
+    tertiary = PastelRed,
+    background = Color.Black,
+    surface = Color(0xFF0E0E10),
     onPrimary = PureWhite,
     onSecondary = PureWhite,
     onTertiary = PureWhite,
@@ -44,25 +59,21 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun RAAHIEyeTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Set dynamicColor to false so it uses your exact pastels instead of Android system wallpaper colors
-    dynamicColor: Boolean = false,
+    themeMode: AppThemeMode = AppThemeMode.OLED,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    val colorScheme = when (themeMode) {
+        AppThemeMode.LIGHT -> LightColorScheme
+        AppThemeMode.DARK -> DarkColorScheme
+        AppThemeMode.OLED -> OledColorScheme
     }
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
+            val isLight = themeMode == AppThemeMode.LIGHT
             window.statusBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = isLight
         }
     }
 

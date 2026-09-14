@@ -17,6 +17,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.Image
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -24,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.raahieye.R
 import com.example.raahieye.model.RtspConfig
 import com.example.raahieye.viewmodel.RaahiViewModel
 
@@ -31,8 +35,6 @@ import com.example.raahieye.viewmodel.RaahiViewModel
 fun SettingsDialog(
     viewModel: RaahiViewModel,
     isDark: Boolean,
-    currentTheme: AppThemeMode,
-    onThemeToggle: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val currentConfig by viewModel.rtspConfig.collectAsState()
@@ -220,33 +222,7 @@ fun SettingsDialog(
                         )
                     }
 
-                    // Theme selector row
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(cardBg)
-                            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
-                            .clickable { onThemeToggle() }
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Rounded.Palette, contentDescription = null, tint = accentColor, modifier = Modifier.size(18.dp))
-                            Text("Theme Mode", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = textPrimary)
-                        }
-
-                        val themeLabel = when (currentTheme) {
-                            AppThemeMode.SYSTEM -> "System"
-                            AppThemeMode.LIGHT -> "Light"
-                            AppThemeMode.OLED_DARK -> "OLED Dark"
-                        }
-                        Text(themeLabel, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = accentColor)
-                    }
+                    HorizontalDivider(color = borderColor)
 
                     // Action buttons
                     Row(
