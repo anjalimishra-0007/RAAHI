@@ -107,12 +107,21 @@ class RTSPReceiver:
         self.stats = StreamStats()
         self._fps_window: deque = deque(maxlen=30)  # rolling window over last 30 frames
 
-        # Configure environment for OpenCV FFmpeg
-        # TCP transport ensures packet integrity over Wi-Fi
-        if self.transport == "tcp":
-            os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
-        else:
-            os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;udp"
+        # Configure OpenCV FFmpeg low-latency capture options
+        # Options are passed as key;value pairs delimited by '|'
+        ffmpeg_opts = [
+            f"rtsp_transport;{self.transport}",
+            "fflags;nobuffer",
+            "flags;low_delay",
+            "max_delay;500000",
+            "reorder_queue_size;0",
+            "stimeout;5000000",
+            "analyzeduration;100000",
+            "probesize;32768"
+        ]
+        self._effective_ffmpeg_options = "|".join(ffmpeg_opts)
+        os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = self._effective_ffmpeg_options
+        logger.info(f"Effective RTSP/FFmpeg low-latency options: {self._effective_ffmpeg_options}")
 
     def start(self):
         """Starts the background capture thread."""
@@ -146,7 +155,7 @@ class RTSPReceiver:
 
     def read(self, wait_for_new: bool = True, timeout: float = 0.5) -> Tuple[bool, Optional[np.ndarray], Dict[str, Any]]:
         """Consumes the latest received video frame.
-        
+
         Args:
             wait_for_new: If True, blocks until a new frame arrives or timeout expires.
             timeout: Maximum wait time in seconds if wait_for_new is True.
@@ -181,9 +190,22 @@ class RTSPReceiver:
         with self._lock:
             return self.stats.to_dict()
 
+    @staticmethod
+    def _release_capture(cap: Optional[cv2.VideoCapture]) -> None:
+        """Completely releases and cleans up a VideoCapture handle."""
+        if cap is not None:
+            try:
+                cap.release()
+            except Exception as e:
+                logger.warning(f"Error releasing VideoCapture handle: {e}")
+
     def _open_capture(self) -> Optional[cv2.VideoCapture]:
         """Creates and validates cv2.VideoCapture instance."""
-        logger.info(f"Connecting to RTSP endpoint: {self.rtsp_url} (transport={self.transport})...")
+        os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = self._effective_ffmpeg_options
+        logger.info(
+            f"Connecting to RTSP endpoint: {self.rtsp_url} (transport={self.transport}) "
+            f"with options: [{self._effective_ffmpeg_options}]..."
+        )
         cap = cv2.VideoCapture(self.rtsp_url, cv2.CAP_FFMPEG)
 
         # Set buffer size to minimize internal queueing
@@ -191,7 +213,7 @@ class RTSPReceiver:
 
         if not cap.isOpened():
             logger.warning(f"Could not open RTSP stream at {self.rtsp_url}")
-            cap.release()
+            self._release_capture(cap)
             return None
 
         # Probe stream properties
@@ -208,8 +230,14 @@ class RTSPReceiver:
     def _capture_worker(self):
         """Worker loop reading frames continuously in background."""
         attempts = 0
+        cap: Optional[cv2.VideoCapture] = None
 
         while not self._stop_event.is_set():
+            # Ensure any previous capture instance is completely released before opening a new one
+            if cap is not None:
+                self._release_capture(cap)
+                cap = None
+
             self.stats.update_state(StreamState.CONNECTING)
             cap = self._open_capture()
 
@@ -282,8 +310,15 @@ class RTSPReceiver:
                     self._new_frame_event.set()
 
             # Teardown capture object before reconnecting
-            cap.release()
+            if cap is not None:
+                self._release_capture(cap)
+                cap = None
             logger.info("RTSP capture handle released.")
             if not self._stop_event.is_set():
                 self.stats.update_state(StreamState.DISCONNECTED)
                 time.sleep(self.reconnect_delay_sec)
+
+        # Final cleanup on exit
+        if cap is not None:
+            self._release_capture(cap)
+            cap = None
