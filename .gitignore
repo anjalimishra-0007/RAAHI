@@ -47,3 +47,17 @@ mediamtx.log
 *.key
 *.crt
 *.pem
+
+# Local database & evidence runtime data
+data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Node & frontend build
+node_modules/
+dist/
+*.mjpeg
+

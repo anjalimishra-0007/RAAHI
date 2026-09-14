@@ -116,8 +116,6 @@ class RTSPReceiver:
             "max_delay;500000",
             "reorder_queue_size;0",
             "stimeout;5000000",
-            "analyzeduration;100000",
-            "probesize;32768"
         ]
         self._effective_ffmpeg_options = "|".join(ffmpeg_opts)
         os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = self._effective_ffmpeg_options
