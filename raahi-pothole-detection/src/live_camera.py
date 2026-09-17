@@ -358,7 +358,7 @@ class EvidenceCaptureSession:
         payload = {
             "potholeId": self.pothole_id,
             "detectionId": self.detection_id,
-            "filePath": str(file_path),
+            "filePath": str(file_path.resolve()),
             "fileName": filename
         }
         try:
@@ -378,6 +378,15 @@ class EvidenceCaptureSession:
                         print(f"\n[Live Evidence] Google Drive upload SKIPPED (already has evidence): {self.pothole_id} -> {resp_data.get('videoUrl')}")
                 else:
                     print(f"\n[Live Evidence] Google Drive upload FAILED for {self.pothole_id}: {resp_data.get('error')}")
+        except urllib.error.HTTPError as e:
+            err_msg = ""
+            try:
+                body = e.read().decode('utf-8')
+                data = json.loads(body)
+                err_msg = data.get('error') or data.get('message') or body
+            except Exception:
+                err_msg = e.reason
+            print(f"\n[Live Evidence] Error notifying upload API: HTTP Error {e.code}: {err_msg}")
         except Exception as e:
             print(f"\n[Live Evidence] Error notifying upload API: {e}")
 
