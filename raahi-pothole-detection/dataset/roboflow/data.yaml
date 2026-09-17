@@ -1,0 +1,13 @@
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 8
+names: ['Drain Hole', 'circle-drain-clean-', 'drain-clean-', 'drain-not clean-', 'hole', 'manhole', 'pothole', 'sewer cover']
+
+roboflow:
+  workspace: rio-dg5tm
+  project: pothole-detection-bqu6s-ztwh1
+  version: 1
+  license: MIT
+  url: https://universe.roboflow.com/rio-dg5tm/pothole-detection-bqu6s-ztwh1/dataset/1

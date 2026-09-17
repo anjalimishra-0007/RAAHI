@@ -1,0 +1,19 @@
+# MediaMTX Configuration for RAAHI Eye RTSP Streaming
+# ====================================================
+# Android RAAHI Eye publishes H.264 video to:
+#   rtsp://<MAC_LAN_IP>:8555/live
+#
+# Mac consumer (OpenCV / YOLO11n) consumes from:
+#   rtsp://127.0.0.1:8555/live
+
+# RTSP listener address (Port 8555 as required for RAAHI Eye)
+rtspAddress: :8555
+
+# Supported RTSP transports
+rtspTransports: [tcp, udp]
+
+# Paths configuration
+paths:
+  live:
+    # Allow publisher to push without authentication
+    source: publisher

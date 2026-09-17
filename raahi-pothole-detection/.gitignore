@@ -1,0 +1,52 @@
+# Python virtual environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Python cache & compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# macOS / OS system files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Secrets, API keys & environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*secret*
+*token*
+*credential*
+
+# Model weights & training artifacts (large binaries)
+*.pt
+*.onnx
+*.engine
+*.tflite
+runs/
+
+# Temporary and editor files
+*.tmp
+*.temp
+*.log
+*.swp
+*.swo
+.idea/
+.vscode/
