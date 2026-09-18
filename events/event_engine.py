@@ -32,16 +32,16 @@ class LocalEventDebouncer:
     when the same physical pothole remains visible across consecutive video frames.
     """
 
-    def __init__(self, cooldown_sec: float = 3.0, spatial_radius_meters: float = 10.0):
+    def __init__(self, cooldown_sec: float = 15.0, spatial_radius_meters: float = 10.0):
         self.cooldown_sec = cooldown_sec
         self.spatial_radius_meters = spatial_radius_meters
         # Stores recent candidate points: list of (epoch_time, lat, lon)
         self._recent_detections = []
 
-    def should_suppress(self, lat: float, lon: float) -> Tuple[bool, Optional[float]]:
+    def should_suppress(self, lat: float, lon: float) -> Tuple[bool, Optional[str]]:
         """
-        Returns (True, distance_meters) if a detection within spatial_radius_meters
-        occurred within the last cooldown_sec.
+        Returns (True, reason) if a detection within spatial_radius_meters or temporal
+        cooldown occurred within cooldown_sec.
         """
         now = time.time()
         # Clean up expired items
@@ -49,10 +49,26 @@ class LocalEventDebouncer:
             (t, lt, ln) for (t, lt, ln) in self._recent_detections if (now - t) < self.cooldown_sec
         ]
 
+        # 1. Fallback temporal check if GPS is not fixed (0.0, 0.0)
+        if lat == 0.0 and lon == 0.0:
+            if self._recent_detections:
+                last_t = self._recent_detections[-1][0]
+                elapsed = now - last_t
+                if elapsed < self.cooldown_sec:
+                    return True, f"Temporal debounce: {self.cooldown_sec - elapsed:.1f}s cooldown remaining"
+            self._recent_detections.append((now, 0.0, 0.0))
+            return False, None
+
+        # 2. Spatial check if GPS fix is available
         for t, prev_lat, prev_lon in self._recent_detections:
-            dist = haversine_distance_meters(lat, lon, prev_lat, prev_lon)
-            if dist <= self.spatial_radius_meters:
-                return True, dist
+            if prev_lat != 0.0 and prev_lon != 0.0:
+                dist = haversine_distance_meters(lat, lon, prev_lat, prev_lon)
+                if dist <= self.spatial_radius_meters:
+                    return True, f"Local spatial suppression: same candidate within {dist:.1f}m in cooldown window"
+            else:
+                elapsed = now - t
+                if elapsed < self.cooldown_sec:
+                    return True, f"Temporal debounce: {self.cooldown_sec - elapsed:.1f}s cooldown remaining"
 
         # Not suppressed; register new detection
         self._recent_detections.append((now, lat, lon))
@@ -68,7 +84,7 @@ class EventEngine:
         self,
         default_bus_id: str = "RAAHI-001",
         edge_model_name: str = "YOLO11n",
-        cooldown_sec: float = 3.0,
+        cooldown_sec: float = 15.0,
         spatial_radius_meters: float = 10.0
     ):
         self.default_bus_id = default_bus_id
@@ -102,11 +118,10 @@ class EventEngine:
         lat = gps_match.get("latitude", 0.0)
         lon = gps_match.get("longitude", 0.0)
 
-        # Check local spatial debounce
-        if lat != 0.0 and lon != 0.0:
-            suppressed, dist = self.debouncer.should_suppress(lat, lon)
-            if suppressed:
-                return None, True, f"Local spatial suppression: same candidate within {dist:.1f}m in cooldown window"
+        # Check local spatial/temporal debounce
+        suppressed, reason = self.debouncer.should_suppress(lat, lon)
+        if suppressed:
+            return None, True, reason
 
         event_id = self.generate_event_id()
         now_iso = datetime.now(timezone.utc).isoformat()

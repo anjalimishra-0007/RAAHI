@@ -36,8 +36,8 @@ class PipelineCoordinator:
         evidence_dir: str = "data/evidence",
         central_url: str = "http://localhost:5001",
         conf_threshold: float = 0.35,
-        pre_buffer_sec: float = 2.0,
-        post_buffer_sec: float = 3.0,
+        pre_buffer_sec: float = 5.0,
+        post_buffer_sec: float = 10.0,
         enable_tracking: bool = False
     ):
         self.bus_id = bus_id
@@ -57,7 +57,10 @@ class PipelineCoordinator:
         self.transmission_worker = TransmissionQueueWorker(self.db, self.central_client)
 
         # 2. Ring Buffer & GPS & Events
-        self.ring_buffer = RollingFrameBuffer(target_duration_sec=self.pre_buffer_sec)
+        self.ring_buffer = RollingFrameBuffer(
+            target_duration_sec=self.pre_buffer_sec,
+            max_capacity=180
+        )
         self.gps_manager = GpsManager(default_bus_id=self.bus_id)
         self.event_engine = EventEngine(default_bus_id=self.bus_id)
 
@@ -87,6 +90,8 @@ class PipelineCoordinator:
         self.latest_preview_jpeg: Optional[bytes] = None
         self.preview_frame_id: int = 0
         self.last_inference_latency_ms = 0.0
+        self.preview_resolution = (960, 540)
+        self.preview_jpeg_quality = 85
 
     def _on_evidence_clip_ready(
         self,
@@ -96,9 +101,11 @@ class PipelineCoordinator:
         size_bytes: int,
         duration_sec: float,
         fps: float,
-        resolution: str
+        resolution: str,
+        timing: Optional[Dict[str, Any]] = None
     ):
         """Callback triggered when an evidence MP4 clip has been assembled."""
+        t4_start = time.time()
         self.db.update_event_evidence(
             event_id=event_id,
             clip_path=clip_path,
@@ -108,7 +115,22 @@ class PipelineCoordinator:
             fps=fps,
             resolution=resolution
         )
-        self.db.log_system_message("EVENT", "EVIDENCE", f"Evidence clip finalized for {event_id} ({duration_sec}s, {size_bytes // 1024} KB)")
+        t4_end = time.time()
+        timing_str = ""
+        if timing and "t0" in timing:
+            t0 = timing["t0"]
+            t3 = timing.get("t3", t4_start)
+            timing_str = (
+                f" [t3-t0: {round(t3 - t0, 2)}s, "
+                f"t4-t0: {round(t4_end - t0, 2)}s, "
+                f"pre: {timing.get('pre_frames_count', '?')}f, "
+                f"post: {timing.get('post_frames_count', '?')}f]"
+            )
+        self.db.log_system_message(
+            "EVENT",
+            "EVIDENCE",
+            f"Evidence clip finalized for {event_id} ({duration_sec}s, {size_bytes // 1024} KB){timing_str}"
+        )
 
     def start(self) -> bool:
         """Starts the entire edge processing pipeline."""
@@ -242,21 +264,29 @@ class PipelineCoordinator:
                     continue
 
                 if pkg:
+                    # 1. Record exact event acceptance/detection timestamp t0
+                    t0 = time.time()
                     self.total_candidates_detected += 1
                     event_id = pkg["eventId"]
-                    self.db.log_system_message("EVENT", "AI", f"Candidate pothole detected: {event_id} (conf: {pkg['edgeConfidence']})")
 
-                    # 3. Save candidate to local SQLite database (status = PENDING_VERIFICATION)
+                    # 2. Extract pre-event frames anchored to t0 (prevents SQLite I/O latency from advancing cutoff)
+                    pre_frames = self.ring_buffer.get_pre_buffer_frames(
+                        duration_sec=self.pre_buffer_sec,
+                        reference_time=t0
+                    )
+
+                    # 3. Save candidate to local SQLite database (status = PENDING_VERIFICATION / queue = RECORDING)
+                    self.db.log_system_message("EVENT", "AI", f"Candidate pothole detected: {event_id} (conf: {pkg['edgeConfidence']})")
                     self.db.insert_event(pkg)
 
-                    # 4. Trigger evidence video capture (~2.0s pre-buffer + ~3.0s post-buffer)
-                    pre_frames = self.ring_buffer.get_pre_buffer_frames(duration_sec=self.pre_buffer_sec)
+                    # 4. Trigger evidence video capture (~5.0s pre-buffer + ~10.0s post-buffer = ~15s total)
                     self.evidence_manager.start_capture(
                         event_id=event_id,
                         pre_frames=pre_frames,
                         fps=self.inference_fps if self.inference_fps > 0 else 30.0,
                         frame_size=self.last_frame_size,
-                        post_duration_sec=self.post_buffer_sec
+                        post_duration_sec=self.post_buffer_sec,
+                        t0=t0
                     )
 
             # Render preview image (downsampled for lightweight web streaming)
@@ -267,8 +297,16 @@ class PipelineCoordinator:
 
             # Encode preview frame to JPEG for live dashboard preview
             try:
-                preview_small = cv2.resize(annotated, (640, 360))
-                _, buf = cv2.imencode('.jpg', preview_small, [cv2.IMWRITE_JPEG_QUALITY, 70])
+                preview_small = cv2.resize(
+                    annotated,
+                    self.preview_resolution,
+                    interpolation=cv2.INTER_AREA
+                )
+                _, buf = cv2.imencode(
+                    '.jpg',
+                    preview_small,
+                    [cv2.IMWRITE_JPEG_QUALITY, self.preview_jpeg_quality]
+                )
                 self.latest_preview_jpeg = buf.tobytes()
                 self.preview_frame_id += 1
             except Exception:

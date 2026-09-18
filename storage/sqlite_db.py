@@ -178,10 +178,11 @@ class EdgeDatabase:
                     package.get("centralDelivery", {}).get("status", "PENDING")
                 ))
 
-                # Also insert into transmission queue
+                # Also insert into transmission queue with RECORDING status
+                # Will transition to PENDING once the evidence MP4 is finalized on disk
                 cur.execute("""
                     INSERT OR IGNORE INTO transmission_queue (event_id, status)
-                    VALUES (?, 'PENDING')
+                    VALUES (?, 'RECORDING')
                 """, (package["eventId"],))
 
                 conn.commit()
@@ -199,11 +200,11 @@ class EdgeDatabase:
         clip_path: str,
         keyframe_path: Optional[str] = None,
         size_bytes: int = 0,
-        duration_sec: float = 5.0,
+        duration_sec: float = 15.0,
         fps: float = 30.0,
         resolution: str = "1920x1080"
     ) -> bool:
-        """Updates event evidence references upon clip generation."""
+        """Updates event evidence references upon clip generation and marks queue ready for transmission."""
         with self.lock:
             conn = self._get_connection()
             try:
@@ -224,6 +225,13 @@ class EdgeDatabase:
                         evidence_id, event_id, clip_path, keyframe_path, duration_sec, size_bytes, fps, resolution
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, (evidence_id, event_id, clip_path, keyframe_path, duration_sec, size_bytes, fps, resolution))
+
+                # Transition transmission queue status to PENDING for central uplink
+                cur.execute("""
+                    UPDATE transmission_queue
+                    SET status = 'PENDING'
+                    WHERE event_id = ? AND status = 'RECORDING'
+                """, (event_id,))
 
                 conn.commit()
                 return True

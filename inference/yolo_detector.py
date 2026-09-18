@@ -154,24 +154,70 @@ class YOLODetector:
         return detections
 
     def draw_detections(self, frame: np.ndarray, detections: List[Dict[str, Any]]) -> np.ndarray:
-        """Draws bounding boxes and labels onto the frame."""
+        """Draws high-visibility tactical bounding boxes and readable labels onto the frame.
+
+        Labels are adaptively scaled based on canvas resolution and rendered with
+        a high-contrast dark background pill (e.g. 'POTHOLE • 42%') to guarantee
+        readability even when the frame is downsampled for dashboard web streaming.
+        """
         annotated = frame.copy()
+        h, w = frame.shape[:2]
+        scale = max(0.5, h / 1080.0)
+
+        box_thick = max(2, int(4 * scale))
+        font_scale = max(0.55, 1.05 * scale)
+        font_thick = max(1, int(2 * scale))
+        pad = int(8 * scale)
+
         for d in detections:
             bbox = d["bbox"]
             cls_name = d["class_name"]
             conf = d["confidence"]
-            color = self.CLASS_COLOR_MAP.get(cls_name, self.DEFAULT_COLOR)
+            color = self.CLASS_COLOR_MAP.get(
+                cls_name.lower(),
+                self.CLASS_COLOR_MAP.get(cls_name, self.DEFAULT_COLOR)
+            )
             track_id = d.get("track_id")
 
-            # Draw box
             x1, y1, x2, y2 = bbox["x1"], bbox["y1"], bbox["x2"], bbox["y2"]
-            cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
 
-            # Label banner
+            # 1. Main bounding box
+            cv2.rectangle(annotated, (x1, y1), (x2, y2), color, box_thick)
+
+            # 2. Formatted label: e.g. '#3 POTHOLE • 42%' or 'POTHOLE • 42%'
             id_prefix = f"#{track_id} " if track_id is not None else ""
-            label = f"{id_prefix}{cls_name.upper()} {int(conf * 100)}%"
-            (lw, lh), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-            cv2.rectangle(annotated, (x1, max(0, y1 - lh - 8)), (x1 + lw + 6, max(lh + 8, y1)), color, -1)
-            cv2.putText(annotated, label, (x1 + 3, max(lh + 4, y1 - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+            label = f"{id_prefix}{cls_name.upper()} • {int(conf * 100)}%"
+            (lw, lh), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thick)
+
+            # 3. Tactical label banner positioning (flip inside box if near top edge)
+            badge_h = lh + pad * 2
+            badge_w = lw + pad * 2
+
+            if y1 - badge_h >= 0:
+                bg_y1 = y1 - badge_h
+                bg_y2 = y1
+            else:
+                bg_y1 = y1
+                bg_y2 = min(h, y1 + badge_h)
+
+            bg_x1 = max(0, x1)
+            bg_x2 = min(w, bg_x1 + badge_w)
+
+            # Solid dark background pill with class-colored border for maximum contrast
+            cv2.rectangle(annotated, (bg_x1, bg_y1), (bg_x2, bg_y2), (18, 20, 24), -1)
+            cv2.rectangle(annotated, (bg_x1, bg_y1), (bg_x2, bg_y2), color, max(1, int(2 * scale)))
+
+            # High-contrast text in crisp white
+            text_y = bg_y2 - pad - int(baseline * 0.3)
+            cv2.putText(
+                annotated,
+                label,
+                (bg_x1 + pad, text_y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                font_scale,
+                (255, 255, 255),
+                font_thick,
+                cv2.LINE_AA
+            )
 
         return annotated

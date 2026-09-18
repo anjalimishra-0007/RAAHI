@@ -1,0 +1,134 @@
+/* ==========================================================================
+   RAAHI EDGE CONTROL - MULTI-THEME TOKEN ARCHITECTURE
+   Themes: Tactical Dark (Default), OLED Dark (Pure Black), Light Console
+   ========================================================================== */
+
+/* 1. TACTICAL DARK (Default Operations Console Theme) */
+:root,
+[data-theme="tactical-dark"] {
+  --bg-app: #040711;
+  --bg-header: rgba(8, 13, 26, 0.95);
+  --bg-ribbon: #060a14;
+  --bg-panel: #080d1a;
+  --bg-panel-header: rgba(14, 22, 38, 0.6);
+  --bg-surface: #0e1626;
+  --bg-surface-hover: #141f36;
+  --bg-subtle: rgba(255, 255, 255, 0.02);
+  --bg-viewport: #02040a;
+  --bg-hud-bar: rgba(5, 8, 17, 0.92);
+  --bg-modal: #090e1c;
+  --bg-modal-header: #0e162a;
+  --bg-input: #03060f;
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-medium: rgba(255, 255, 255, 0.12);
+  --border-highlight: rgba(0, 240, 255, 0.35);
+
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-dim: #475569;
+
+  --live-green: #10b981;
+  --live-green-glow: rgba(16, 185, 129, 0.25);
+  --accent-cyan: #00f0ff;
+  --accent-cyan-glow: rgba(0, 240, 255, 0.2);
+  --warn-amber: #f59e0b;
+  --warn-amber-glow: rgba(245, 158, 11, 0.25);
+  --error-rose: #f43f5e;
+  --error-rose-glow: rgba(244, 63, 94, 0.25);
+  --standby-blue: #38bdf8;
+  --offline-slate: #64748b;
+
+  --bg-scroll-track: #070c18;
+  --bg-scroll-thumb: #1e293b;
+  --bg-scroll-thumb-hover: #334155;
+
+  --theme-glow: 0 0 14px rgba(2, 132, 199, 0.4);
+}
+
+/* 2. OLED DARK (Pure Black #000000, Minimal Illuminated Pixels, High Contrast) */
+[data-theme="oled-dark"] {
+  --bg-app: #000000;
+  --bg-header: #000000;
+  --bg-ribbon: #000000;
+  --bg-panel: #050505;
+  --bg-panel-header: #080808;
+  --bg-surface: #0c0c0c;
+  --bg-surface-hover: #141414;
+  --bg-subtle: rgba(255, 255, 255, 0.015);
+  --bg-viewport: #000000;
+  --bg-hud-bar: rgba(0, 0, 0, 0.95);
+  --bg-modal: #080808;
+  --bg-modal-header: #0d0d0d;
+  --bg-input: #000000;
+
+  --border-subtle: #171717;
+  --border-medium: #262626;
+  --border-highlight: #38bdf8;
+
+  --text-primary: #ffffff;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
+  --text-dim: #525252;
+
+  --live-green: #22c55e;
+  --live-green-glow: none;
+  --accent-cyan: #38bdf8;
+  --accent-cyan-glow: none;
+  --warn-amber: #eab308;
+  --warn-amber-glow: none;
+  --error-rose: #ef4444;
+  --error-rose-glow: none;
+  --standby-blue: #38bdf8;
+  --offline-slate: #525252;
+
+  --bg-scroll-track: #000000;
+  --bg-scroll-thumb: #262626;
+  --bg-scroll-thumb-hover: #404040;
+
+  --theme-glow: none;
+}
+
+/* 3. LIGHT (Professional Engineering Operations Console) */
+[data-theme="light"] {
+  --bg-app: #f1f5f9;
+  --bg-header: rgba(255, 255, 255, 0.96);
+  --bg-ribbon: #ffffff;
+  --bg-panel: #ffffff;
+  --bg-panel-header: #f8fafc;
+  --bg-surface: #f1f5f9;
+  --bg-surface-hover: #e2e8f0;
+  --bg-subtle: rgba(0, 0, 0, 0.02);
+  --bg-viewport: #0a0f1d; /* Retain dark camera frame for optimal video visibility */
+  --bg-hud-bar: rgba(15, 23, 42, 0.92);
+  --bg-modal: #ffffff;
+  --bg-modal-header: #f8fafc;
+  --bg-input: #ffffff;
+
+  --border-subtle: #e2e8f0;
+  --border-medium: #cbd5e1;
+  --border-highlight: #0284c7;
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+
+  --live-green: #15803d;
+  --live-green-glow: rgba(21, 128, 61, 0.15);
+  --accent-cyan: #0284c7;
+  --accent-cyan-glow: rgba(2, 132, 199, 0.15);
+  --warn-amber: #b45309;
+  --warn-amber-glow: rgba(180, 83, 9, 0.15);
+  --error-rose: #b91c1c;
+  --error-rose-glow: rgba(185, 28, 28, 0.15);
+  --standby-blue: #0369a1;
+  --offline-slate: #94a3b8;
+
+  --bg-scroll-track: #f1f5f9;
+  --bg-scroll-thumb: #cbd5e1;
+  --bg-scroll-thumb-hover: #94a3b8;
+
+  --theme-glow: 0 0 10px rgba(2, 132, 199, 0.2);
+}

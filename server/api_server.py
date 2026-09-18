@@ -389,6 +389,8 @@ def update_settings(payload: SettingsPayload):
             coordinator.detector.conf_threshold = payload.confThreshold
     if payload.preBufferSec is not None:
         coordinator.pre_buffer_sec = payload.preBufferSec
+        if hasattr(coordinator, "ring_buffer"):
+            coordinator.ring_buffer.target_duration_sec = payload.preBufferSec
     if payload.postBufferSec is not None:
         coordinator.post_buffer_sec = payload.postBufferSec
 
