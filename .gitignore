@@ -50,6 +50,10 @@ mediamtx.log
 
 # Local database & evidence runtime data
 data/
+data/**/*.db
+data/**/*.db-wal
+data/**/*.db-shm
+data/evidence/
 *.db
 *.db-wal
 *.db-shm

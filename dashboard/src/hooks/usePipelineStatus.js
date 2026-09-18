@@ -86,6 +86,7 @@ export function usePipelineStatus(pollIntervalMs = 2000) {
 
   const components = pipelineStatus?.components || {};
   const metrics = pipelineStatus?.metrics || {};
+  const traffic = pipelineStatus?.traffic || null;
   const latestGps = pipelineStatus?.latestGps || null;
   const busId = pipelineStatus?.busId || 'RAAHI-001';
   const isRunning = pipelineStatus?.pipelineRunning || false;
@@ -103,6 +104,7 @@ export function usePipelineStatus(pollIntervalMs = 2000) {
     pipelineStatus,
     components,
     metrics,
+    traffic,
     latestGps,
     busId,
     isRunning,

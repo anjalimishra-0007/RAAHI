@@ -41,53 +41,12 @@ coordinator = PipelineCoordinator(
     model_path="models/pothole_yolo11n.pt",
     db_path="data/raahi_edge.db",
     evidence_dir="data/evidence",
-    central_url="http://localhost:5001"
+    central_url="http://localhost:5001",
+    enable_traffic=True,
+    traffic_model_path="models/yolo11n.pt",
+    traffic_conf_threshold=0.30,
+    traffic_cadence_stride=2
 )
-
-# Auxiliary Port 5001 GPS Ingestion Server (Matches Android RAAHI-Eye hardcoded port 5001)
-gps_aux_server: Optional[HTTPServer] = None
-
-class GpsForwardHandler(BaseHTTPRequestHandler):
-    def do_POST(self):
-        try:
-            content_length = int(self.headers.get('Content-Length', 0))
-            body = self.rfile.read(content_length)
-            data = json.loads(body.decode('utf-8'))
-
-            sample = coordinator.gps_manager.ingest_sample(
-                latitude=float(data["latitude"]),
-                longitude=float(data["longitude"]),
-                accuracy=data.get("accuracy"),
-                speed=data.get("speed"),
-                timestamp=data.get("timestamp"),
-                bus_id=data.get("busId") or coordinator.bus_id
-            )
-            coordinator.db.insert_gps_telemetry(
-                bus_id=sample["busId"],
-                lat=sample["latitude"],
-                lon=sample["longitude"],
-                accuracy=sample["accuracy"],
-                speed=sample["speed"],
-                ts=sample["timestamp"]
-            )
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(b'{"success":true}')
-        except Exception as e:
-            self.send_response(400)
-            self.end_headers()
-            self.wfile.write(f'{{"error":"{str(e)}"}}'.encode())
-
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
-        fix = coordinator.gps_manager.get_latest_fix(coordinator.bus_id)
-        self.wfile.write(json.dumps({"connected": fix is not None, "latestGps": fix}).encode())
-
-    def log_message(self, format, *args):
-        pass
 
 # ------------------ SCHEMAS ------------------
 
@@ -106,38 +65,21 @@ class SettingsPayload(BaseModel):
     confThreshold: Optional[float] = None
     preBufferSec: Optional[float] = None
     postBufferSec: Optional[float] = None
+    maxEvidenceMb: Optional[float] = None
+    maxDatabaseMb: Optional[float] = None
 
 # ------------------ LIFECYCLE ------------------
 
 @app.on_event("startup")
 async def startup_event():
-    global gps_aux_server
     print("[API Server] RAAHI-Edge API server started on port 5050")
     # Auto-start pipeline on boot
     coordinator.start()
 
-    # Start port 5001 GPS ingestion server for physical phone telemetry
-    def run_gps_server():
-        global gps_aux_server
-        try:
-            gps_aux_server = HTTPServer(('0.0.0.0', 5001), GpsForwardHandler)
-            print("[API Server] Port 5001 GPS receiver listening on 0.0.0.0:5001")
-            gps_aux_server.serve_forever()
-        except Exception as e:
-            print(f"[API Server] Could not start port 5001 GPS receiver: {e}")
-
-    threading.Thread(target=run_gps_server, daemon=True).start()
-
 @app.on_event("shutdown")
 async def shutdown_event():
-    global gps_aux_server
     print("[API Server] Shutting down RAAHI-Edge...")
     coordinator.stop()
-    if gps_aux_server:
-        try:
-            gps_aux_server.shutdown()
-        except Exception:
-            pass
 
 # ------------------ PIPELINE CONTROLS ------------------
 
@@ -240,7 +182,27 @@ def get_evidence_file(filename: str):
 
 @app.get("/api/storage/stats")
 def get_storage_stats():
-    return coordinator.db.get_storage_stats()
+    base_stats = coordinator.db.get_storage_stats(evidence_dir=coordinator.evidence_dir)
+    if hasattr(coordinator, "retention_manager") and coordinator.retention_manager:
+        ret_status = coordinator.retention_manager.get_status()
+        base_stats.update({
+            "maxEvidenceMB": ret_status["maxEvidenceMB"],
+            "maxDatabaseMB": ret_status["maxDatabaseMB"],
+            "retentionStatus": ret_status["retentionStatus"],
+            "eligibleClips": ret_status["eligibleClips"],
+            "protectedClips": ret_status["protectedClips"],
+            "lastCleanupResult": ret_status["lastCleanupResult"]
+        })
+    else:
+        base_stats.update({
+            "maxEvidenceMB": 800.0,
+            "maxDatabaseMB": 200.0,
+            "retentionStatus": "NORMAL",
+            "eligibleClips": 0,
+            "protectedClips": base_stats.get("totalClips", 0),
+            "lastCleanupResult": "IDLE"
+        })
+    return base_stats
 
 @app.get("/api/transmission/stats")
 def get_transmission_stats():
@@ -369,7 +331,9 @@ def get_settings():
         "centralUrl": coordinator.central_url,
         "confThreshold": coordinator.conf_threshold,
         "preBufferSec": coordinator.pre_buffer_sec,
-        "postBufferSec": coordinator.post_buffer_sec
+        "postBufferSec": coordinator.post_buffer_sec,
+        "maxEvidenceMb": coordinator.retention_config.max_evidence_mb if hasattr(coordinator, "retention_config") else 800.0,
+        "maxDatabaseMb": coordinator.retention_config.max_database_mb if hasattr(coordinator, "retention_config") else 200.0
     }
 
 @app.post("/api/settings")
@@ -393,8 +357,34 @@ def update_settings(payload: SettingsPayload):
             coordinator.ring_buffer.target_duration_sec = payload.preBufferSec
     if payload.postBufferSec is not None:
         coordinator.post_buffer_sec = payload.postBufferSec
+    if payload.maxEvidenceMb is not None and hasattr(coordinator, "retention_config"):
+        coordinator.retention_config.max_evidence_mb = payload.maxEvidenceMb
+    if payload.maxDatabaseMb is not None and hasattr(coordinator, "retention_config"):
+        coordinator.retention_config.max_database_mb = payload.maxDatabaseMb
 
     return {"success": True, "message": "Settings updated"}
+
+# ------------------ MANUAL DEV STORAGE CLEANUP (OPERATOR ONLY) ------------------
+
+class ManualCleanupPayload(BaseModel):
+    confirmToken: str
+
+@app.get("/api/storage/manual-cleanup/dry-run")
+def get_manual_cleanup_dry_run():
+    """Operator endpoint: Non-destructive dry-run audit of local development storage."""
+    from storage.manual_cleanup import ManualDevCleanupManager
+    mgr = ManualDevCleanupManager(db=coordinator.db, evidence_dir=coordinator.evidence_dir)
+    return mgr.inspect_cleanup_scope()
+
+@app.post("/api/storage/manual-cleanup/execute")
+def execute_manual_cleanup(payload: ManualCleanupPayload):
+    """Operator endpoint: Guarded manual local dev data cleanup. Requires confirmToken."""
+    from storage.manual_cleanup import ManualDevCleanupManager
+    mgr = ManualDevCleanupManager(db=coordinator.db, evidence_dir=coordinator.evidence_dir)
+    res = mgr.execute_cleanup(confirm_token=payload.confirmToken)
+    if not res.get("success"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Cleanup rejected"))
+    return res
 
 # ------------------ WEBSOCKET TELEMETRY ------------------
 

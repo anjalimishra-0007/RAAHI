@@ -1,9 +1,15 @@
 import time
 import os
+import sys
 import cv2
 import torch
 import numpy as np
 import requests
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 from ultralytics import YOLO
 from capture.rtsp_receiver import RTSPReceiver
 from ring_buffer.rolling_buffer import RollingFrameBuffer
@@ -38,7 +44,7 @@ def demonstrate_live_candidate_event():
     ring_buffer = RollingFrameBuffer(target_duration_sec=2.0, max_capacity=90)
     
     evidence_finalized = {}
-    def on_evidence_ready(event_id, clip_path, keyframe_path, size_bytes, duration_sec, fps, resolution):
+    def on_evidence_ready(event_id, clip_path, keyframe_path, size_bytes, duration_sec, fps, resolution, timing=None, **kwargs):
         print(f"   [CALLBACK] Evidence Finalized for {event_id}:")
         print(f"              Clip: {clip_path} ({size_bytes / 1024:.1f} KB, {duration_sec:.1f}s @ {fps:.1f} FPS, {resolution})")
         print(f"              Keyframe: {keyframe_path}")

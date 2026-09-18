@@ -1,14 +1,16 @@
 import React from 'react';
 import { PerceptionTelemetry } from './PerceptionTelemetry';
+import { TrafficTelemetry } from './TrafficTelemetry';
 import { GpsTelemetry } from './GpsTelemetry';
 import { StoragePanel } from '../storage/StoragePanel';
 import { TransmissionPanel } from '../storage/TransmissionPanel';
 
 /**
- * TelemetryGrid groups the 4 operational metric subsystems (Perception, GNSS, Storage, Transmission).
+ * TelemetryGrid groups the operational metric subsystems (Perception, Traffic, GNSS, Storage, Transmission).
  */
 export function TelemetryGrid({
   metrics,
+  traffic,
   aiLatencyMs,
   processingFps,
   latestGps,
@@ -23,13 +25,18 @@ export function TelemetryGrid({
           aiLatencyMs={aiLatencyMs}
           processingFps={processingFps}
         />
-        <GpsTelemetry latestGps={latestGps} />
+        <TrafficTelemetry traffic={traffic} />
       </div>
 
       <div className="subsystems-grid">
+        <GpsTelemetry latestGps={latestGps} />
         <StoragePanel storageStats={storageStats} />
+      </div>
+
+      <div className="subsystems-grid" style={{ gridTemplateColumns: '1fr' }}>
         <TransmissionPanel transmissionStats={transmissionStats} />
       </div>
     </>
   );
 }
+

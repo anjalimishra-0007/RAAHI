@@ -89,6 +89,7 @@ export default function App() {
           />
           <TelemetryGrid
             metrics={status.metrics}
+            traffic={status.traffic}
             aiLatencyMs={status.aiLatencyMs}
             processingFps={status.processingFps}
             latestGps={status.latestGps}
