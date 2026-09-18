@@ -8,6 +8,10 @@ import os
 import sys
 import subprocess
 import time
+import shutil
+import threading
+import json
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from typing import Dict, List, Optional, Any
 
 # Ensure project root is in python path
@@ -40,6 +44,51 @@ coordinator = PipelineCoordinator(
     central_url="http://localhost:5001"
 )
 
+# Auxiliary Port 5001 GPS Ingestion Server (Matches Android RAAHI-Eye hardcoded port 5001)
+gps_aux_server: Optional[HTTPServer] = None
+
+class GpsForwardHandler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body.decode('utf-8'))
+
+            sample = coordinator.gps_manager.ingest_sample(
+                latitude=float(data["latitude"]),
+                longitude=float(data["longitude"]),
+                accuracy=data.get("accuracy"),
+                speed=data.get("speed"),
+                timestamp=data.get("timestamp"),
+                bus_id=data.get("busId") or coordinator.bus_id
+            )
+            coordinator.db.insert_gps_telemetry(
+                bus_id=sample["busId"],
+                lat=sample["latitude"],
+                lon=sample["longitude"],
+                accuracy=sample["accuracy"],
+                speed=sample["speed"],
+                ts=sample["timestamp"]
+            )
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(b'{"success":true}')
+        except Exception as e:
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write(f'{{"error":"{str(e)}"}}'.encode())
+
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        fix = coordinator.gps_manager.get_latest_fix(coordinator.bus_id)
+        self.wfile.write(json.dumps({"connected": fix is not None, "latestGps": fix}).encode())
+
+    def log_message(self, format, *args):
+        pass
+
 # ------------------ SCHEMAS ------------------
 
 class GpsPayload(BaseModel):
@@ -62,14 +111,33 @@ class SettingsPayload(BaseModel):
 
 @app.on_event("startup")
 async def startup_event():
+    global gps_aux_server
     print("[API Server] RAAHI-Edge API server started on port 5050")
     # Auto-start pipeline on boot
     coordinator.start()
 
+    # Start port 5001 GPS ingestion server for physical phone telemetry
+    def run_gps_server():
+        global gps_aux_server
+        try:
+            gps_aux_server = HTTPServer(('0.0.0.0', 5001), GpsForwardHandler)
+            print("[API Server] Port 5001 GPS receiver listening on 0.0.0.0:5001")
+            gps_aux_server.serve_forever()
+        except Exception as e:
+            print(f"[API Server] Could not start port 5001 GPS receiver: {e}")
+
+    threading.Thread(target=run_gps_server, daemon=True).start()
+
 @app.on_event("shutdown")
 async def shutdown_event():
+    global gps_aux_server
     print("[API Server] Shutting down RAAHI-Edge...")
     coordinator.stop()
+    if gps_aux_server:
+        try:
+            gps_aux_server.shutdown()
+        except Exception:
+            pass
 
 # ------------------ PIPELINE CONTROLS ------------------
 
@@ -95,15 +163,19 @@ def get_pipeline_status():
 # ------------------ LIVE PREVIEW MJPEG ------------------
 
 def mjpeg_generator():
-    """Streams preview frames at ~15 FPS to avoid unnecessary CPU/bandwidth overhead."""
+    """Streams fresh preview frames with zero socket buffering drift."""
+    last_id = -1
     while True:
-        frame_bytes = coordinator.latest_preview_jpeg
-        if frame_bytes:
-            yield (b"--frame\r\n"
-                   b"Content-Type: image/jpeg\r\n"
-                   b"Content-Length: " + str(len(frame_bytes)).encode() + b"\r\n\r\n" +
-                   frame_bytes + b"\r\n")
-        time.sleep(0.066)
+        current_id = coordinator.preview_frame_id
+        if current_id != last_id:
+            frame_bytes = coordinator.latest_preview_jpeg
+            if frame_bytes:
+                last_id = current_id
+                yield (b"--frame\r\n"
+                       b"Content-Type: image/jpeg\r\n"
+                       b"Content-Length: " + str(len(frame_bytes)).encode() + b"\r\n\r\n" +
+                       frame_bytes + b"\r\n")
+        time.sleep(0.033)
 
 @app.get("/api/video/preview")
 def get_video_preview():
@@ -192,51 +264,100 @@ def get_logs(limit: int = 100, category: Optional[str] = None, level: Optional[s
 
 # ------------------ PHONE & ADB DIAGNOSTICS ------------------
 
-@app.get("/api/phone/diagnostics")
-def get_phone_diagnostics():
-    # 1. Probe ADB
+_phone_diag_cache: Dict[str, Any] = {}
+_phone_diag_last_update: float = 0.0
+_phone_diag_lock = threading.Lock()
+
+def _fetch_phone_diagnostics_raw() -> Dict[str, Any]:
+    """Probes physical phone state, network route, and ADB status."""
     adb_connected = False
     device_model = "None"
     android_version = "Unknown"
+    adb_bin = shutil.which("adb") or "/Users/ujjwalraj/Library/Android/sdk/platform-tools/adb"
 
     try:
-        res = subprocess.run(["adb", "devices", "-l"], capture_output=True, text=True, timeout=2.0)
-        lines = [l for l in res.stdout.strip().split("\n") if "\tdevice" in l]
+        res = subprocess.run([adb_bin, "devices", "-l"], capture_output=True, text=True, timeout=2.0)
+        lines = [l for l in res.stdout.strip().splitlines() if "device" in l.split() and not l.startswith("List of")]
         if lines:
             adb_connected = True
-            device_model = lines[0].split()[0]
-            # Try to get model
-            v_res = subprocess.run(["adb", "-s", device_model, "shell", "getprop", "ro.build.version.release"], capture_output=True, text=True, timeout=2.0)
+            device_serial = lines[0].split()[0]
+            # Retrieve model and android version
+            m_res = subprocess.run([adb_bin, "-s", device_serial, "shell", "getprop", "ro.product.model"], capture_output=True, text=True, timeout=2.0)
+            device_model = m_res.stdout.strip() if m_res.returncode == 0 else device_serial
+            v_res = subprocess.run([adb_bin, "-s", device_serial, "shell", "getprop", "ro.build.version.release"], capture_output=True, text=True, timeout=2.0)
             if v_res.returncode == 0:
                 android_version = v_res.stdout.strip()
     except Exception:
         adb_connected = False
 
-    # 2. Ping hotspot IP
-    hotspot_ip = "10.159.195.5"
-    hotspot_reachable = False
-    ping_ms = None
+    # Dynamically discover hotspot (phone gateway) and active Mac LAN IP
+    hotspot_ip = None
+    mac_ip = None
+
     try:
-        p_res = subprocess.run(["ping", "-c", "1", "-t", "1", hotspot_ip], capture_output=True, text=True, timeout=1.5)
-        if p_res.returncode == 0:
-            hotspot_reachable = True
-            for part in p_res.stdout.split():
-                if "time=" in part:
-                    ping_ms = float(part.split("time=")[1])
+        r = subprocess.run(["netstat", "-nr", "-f", "inet"], capture_output=True, text=True, timeout=1.0)
+        for line in r.stdout.splitlines():
+            parts = line.split()
+            if len(parts) >= 2 and parts[0] == "default":
+                hotspot_ip = parts[1]
+                break
     except Exception:
         pass
 
-    # 3. MediaMTX active streams
+    if not hotspot_ip and adb_connected:
+        try:
+            a_res = subprocess.run([adb_bin, "shell", "ip -4 addr show swlan0"], capture_output=True, text=True, timeout=1.5)
+            for line in a_res.stdout.splitlines():
+                if "inet " in line:
+                    hotspot_ip = line.strip().split()[1].split("/")[0]
+                    break
+        except Exception:
+            pass
+
+    try:
+        r2 = subprocess.run(["ifconfig", "en0"], capture_output=True, text=True, timeout=1.0)
+        for line in r2.stdout.splitlines():
+            if "inet " in line:
+                mac_ip = line.strip().split()[1]
+                break
+    except Exception:
+        pass
+
+    hotspot_reachable = False
+    ping_ms = None
+    if hotspot_ip:
+        try:
+            p_res = subprocess.run(["ping", "-c", "1", "-t", "1", hotspot_ip], capture_output=True, text=True, timeout=1.5)
+            if p_res.returncode == 0:
+                hotspot_reachable = True
+                for part in p_res.stdout.split():
+                    if "time=" in part:
+                        ping_ms = float(part.split("time=")[1])
+        except Exception:
+            pass
+
     return {
         "adbConnected": adb_connected,
         "adbDevice": device_model,
         "androidVersion": android_version,
-        "hotspotIp": hotspot_ip,
+        "hotspotIp": hotspot_ip or "Dynamic / Unresolved",
+        "macIp": mac_ip or "127.0.0.1",
         "hotspotReachable": hotspot_reachable,
         "hotspotPingMs": ping_ms,
         "mediaMtxListening": True,
         "timestamp": time.time()
     }
+
+@app.get("/api/phone/diagnostics")
+def get_phone_diagnostics() -> Dict[str, Any]:
+    """Cached phone diagnostics endpoint to prevent blocking event loop."""
+    global _phone_diag_cache, _phone_diag_last_update
+    now = time.time()
+    with _phone_diag_lock:
+        if not _phone_diag_cache or (now - _phone_diag_last_update > 2.0):
+            _phone_diag_cache = _fetch_phone_diagnostics_raw()
+            _phone_diag_last_update = now
+        return _phone_diag_cache
 
 # ------------------ SETTINGS ------------------
 

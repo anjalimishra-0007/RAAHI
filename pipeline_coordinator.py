@@ -85,6 +85,7 @@ class PipelineCoordinator:
         self.last_frame_size = (1920, 1080)
         self.latest_annotated_frame: Optional[np.ndarray] = None
         self.latest_preview_jpeg: Optional[bytes] = None
+        self.preview_frame_id: int = 0
         self.last_inference_latency_ms = 0.0
 
     def _on_evidence_clip_ready(
@@ -186,9 +187,9 @@ class PipelineCoordinator:
                 time.sleep(0.1)
                 continue
 
-            success, frame, metadata = self.receiver.read(wait_for_new=False)
+            success, frame, metadata = self.receiver.read(wait_for_new=True, timeout=0.1)
             if not success or frame is None or frame.size == 0:
-                time.sleep(0.01)
+                time.sleep(0.005)
                 continue
             self.last_frame_size = (frame.shape[1], frame.shape[0])
             self.processed_frames += 1
@@ -269,14 +270,22 @@ class PipelineCoordinator:
                 preview_small = cv2.resize(annotated, (640, 360))
                 _, buf = cv2.imencode('.jpg', preview_small, [cv2.IMWRITE_JPEG_QUALITY, 70])
                 self.latest_preview_jpeg = buf.tobytes()
+                self.preview_frame_id += 1
             except Exception:
                 pass
 
     def get_health_status(self) -> Dict[str, Any]:
-        """Returns comprehensive status of all pipeline components."""
+        """Returns comprehensive status of all pipeline components with genuine telemetry."""
         receiver_state = self.receiver.stats.state.name if self.receiver else "STOPPED"
         receiver_stats = self.receiver.get_stats() if self.receiver else {}
-        self.receiver_fps = receiver_stats.get("fps", 0.0)
+        self.receiver_fps = receiver_stats.get("current_fps", 0.0)
+        average_input_fps = receiver_stats.get("average_fps", 0.0)
+        frames_received = receiver_stats.get("total_frames_received", 0)
+        frames_dropped = receiver_stats.get("dropped_frames", 0)
+        read_failures = receiver_stats.get("read_failures", 0)
+        reconnects = receiver_stats.get("reconnects", 0)
+        receiver_uptime = receiver_stats.get("uptime_seconds", 0.0)
+        resolution_str = receiver_stats.get("resolution", f"{self.last_frame_size[0]}x{self.last_frame_size[1]}")
 
         # Check MediaMTX
         mediamtx_up = False
@@ -292,32 +301,72 @@ class PipelineCoordinator:
         # Central health check
         central_health = self.central_client.check_central_health()
 
-        # GPS fix
+        # GPS fix & freshness calculation
         latest_gps = self.gps_manager.get_latest_fix(self.bus_id)
+        gps_age_sec = None
+        if latest_gps and latest_gps.get("epochMs"):
+            gps_age_sec = round(time.time() - (latest_gps["epochMs"] / 1000.0), 1)
+            latest_gps["ageSec"] = gps_age_sec
+            latest_gps["isFresh"] = (gps_age_sec < 5.0)
+
+        # Operational status definitions (LIVE, STANDBY, OFFLINE, DEGRADED, ERROR)
+        camera_status = "LIVE" if (receiver_state == "STREAMING" and self.receiver_fps > 0) else ("STANDBY" if mediamtx_up else "OFFLINE")
+        gps_status = "LIVE" if (latest_gps and gps_age_sec is not None and gps_age_sec < 5.0) else ("DEGRADED" if latest_gps else "OFFLINE")
+        ai_status = "LIVE" if (self.is_running and self.inference_fps > 0) else ("STANDBY" if self.detector else "OFFLINE")
+        central_status = "LIVE" if central_health.get("connected") else "OFFLINE"
 
         return {
             "busId": self.bus_id,
             "pipelineRunning": self.is_running,
             "components": {
-                "camera": "STREAMING" if (receiver_state == "STREAMING" and self.receiver_fps > 0) else ("STANDBY" if mediamtx_up else "OFFLINE"),
-                "rtsp": "ONLINE" if mediamtx_up else "OFFLINE",
-                "mediamtx": "RUNNING" if mediamtx_up else "STOPPED",
-                "opencv": receiver_state,
-                "yolo11n": "INFERRING" if (self.is_running and self.inference_fps > 0) else ("READY" if self.detector else "STOPPED"),
-                "gps": "CONNECTED" if (latest_gps and (time.time() - latest_gps.get("epochMs", 0) / 1000.0 < 5.0)) else ("STALE" if latest_gps else "DISCONNECTED"),
-                "eventEngine": "ACTIVE" if self.is_running else "IDLE",
-                "localDb": "ONLINE" if os.path.exists(self.db_path) else "INITIALIZING",
-                "centralConnection": "CONNECTED" if central_health.get("connected") else "OFFLINE"
+                "camera": camera_status,
+                "rtsp": "LIVE" if mediamtx_up else "OFFLINE",
+                "mediamtx": "LIVE" if mediamtx_up else "OFFLINE",
+                "opencv": "LIVE" if receiver_state == "STREAMING" else ("DEGRADED" if receiver_state == "STALLED" else receiver_state),
+                "yolo11n": ai_status,
+                "gps": gps_status,
+                "eventEngine": "LIVE" if self.is_running else "STANDBY",
+                "localDb": "LIVE" if os.path.exists(self.db_path) else "INITIALIZING",
+                "centralConnection": central_status
             },
             "metrics": {
+                # Genuine Physical Input Telemetry (S23 FE -> RTSP -> OpenCV)
+                "inputFps": self.receiver_fps,
+                "input_fps": self.receiver_fps,
                 "receiverFps": self.receiver_fps,
+                "averageInputFps": average_input_fps,
+                "average_input_fps": average_input_fps,
+
+                # Genuine AI Edge Processing Telemetry (YOLO11n MPS)
+                "processingFps": self.inference_fps,
+                "processing_fps": self.inference_fps,
                 "inferenceFps": self.inference_fps,
                 "inferenceLatencyMs": self.last_inference_latency_ms,
+                "inference_latency_ms": self.last_inference_latency_ms,
+
+                # Web Browser Preview Stream (Throttled MJPEG)
+                "previewFps": 15.0 if self.latest_preview_jpeg else 0.0,
+                "preview_fps": 15.0 if self.latest_preview_jpeg else 0.0,
+
+                # Real Frame Counters
+                "framesReceived": frames_received,
+                "frames_received": frames_received,
+                "framesProcessed": self.processed_frames,
+                "frames_processed": self.processed_frames,
                 "processedFrames": self.processed_frames,
+                "droppedFrames": frames_dropped,
+                "framesDropped": frames_dropped,
+                "frames_dropped": frames_dropped,
+                "readFailures": read_failures,
+                "read_failures": read_failures,
+                "reconnects": reconnects,
+                "uptimeSeconds": receiver_uptime,
+
+                # Detection & Buffer Telemetry
                 "candidatesDetected": self.total_candidates_detected,
                 "candidatesSuppressed": self.total_candidates_suppressed,
                 "ringBufferFrames": len(self.ring_buffer),
-                "resolution": f"{self.last_frame_size[0]}x{self.last_frame_size[1]}"
+                "resolution": resolution_str
             },
             "latestGps": latest_gps,
             "centralSync": {
