@@ -60,6 +60,16 @@ const potholeSchema = new mongoose.Schema(
       trim: true,
       default: ''
     },
+    driveFileId: {
+      type: String,
+      trim: true,
+      default: null
+    },
+    driveWebViewLink: {
+      type: String,
+      trim: true,
+      default: null
+    },
     status: {
       type: String,
       enum: ['open', 'investigating', 'repaired', 'ignored'],
@@ -106,6 +116,10 @@ const potholeSchema = new mongoose.Schema(
     evidenceReference: {
       type: String,
       default: ''
+    },
+    trafficTelemetry: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null
     },
     centralDeliveryStatus: {
       type: String,

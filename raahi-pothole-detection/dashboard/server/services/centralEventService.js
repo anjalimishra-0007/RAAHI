@@ -1,19 +1,20 @@
 import CandidateEvent from '../models/CandidateEvent.js';
 import Pothole from '../models/Pothole.js';
+import { promoteCandidate, isSupportedAuthoritativeClass } from './centralEventPromotionService.js';
+import { createOrUpdateTrafficIncident } from './trafficIncidentService.js';
 
 /**
- * Central Event Ingestion Service (Phase 2)
- * =========================================
+ * Central Event Ingestion Service (Phase 2 & SIH Edge Integration)
+ * ==============================================================
  * Implements the canonical Central Ingestion Architecture for RAAHI.
  * Accepts pre-associated, validated Event Packages from RAAHI-Edge.
  * 
  * ARCHITECTURAL CONSTRAINTS:
- * - Ingestion creates CANDIDATE EVENTS in the 'candidate_events' collection.
- * - Ingestion does NOT create authoritative Pothole records.
- * - NO real-time camera inference (no YOLO, no OpenCV).
- * - NO Central-side GPS timestamp matching.
- * - Stores Candidate Events in state: status = 'pending' (pending promotion).
- * - Guarantees idempotency on retried Edge eventId transmissions.
+ * - Deterministic validation and normalization of incoming Edge packages.
+ * - Idempotently persists in candidate_events.
+ * - Deterministically executes 10m Haversine deduplication / cross-bus fusion for potholes.
+ * - Deterministically executes 50m / 10min spatial-temporal cross-bus correlation for traffic.
+ * - NO AI inference on Central (no VLM, no LLM, no Central YOLO).
  */
 
 /**
@@ -144,7 +145,7 @@ export function validateEventPackage(payload) {
 
   const parsedBbox = extractBoundingBox(bbox);
   if (!parsedBbox) {
-    return { valid: false, error: "Invalid 'boundingBox' format. Expected { x1, y1, x2, y2 } with numeric values." };
+    return { valid: false, error: "Invalid 'boundingBox' format. Expected { x1, y1, x2, y2 } or { x, y, width, height } with numeric values." };
   }
 
   // 11. Evidence Reference (optional / string when supplied)
@@ -243,6 +244,7 @@ export function normalizeEventPackage(payload) {
     confidence: Math.round(conf * 100) / 100,
     class: cls,
     boundingBox: bbox,
+    trafficTelemetry: payload.trafficTelemetry || null,
     evidenceReference: evidenceRef,
     status: 'pending',
     centralDeliveryStatus: 'received'
@@ -250,19 +252,11 @@ export function normalizeEventPackage(payload) {
 }
 
 /**
- * Ingests a canonical Edge Event Package as a Central Candidate Event.
- * 
- * ARCHITECTURAL RULE:
- * - Persists strictly to the 'candidate_events' collection via CandidateEvent.
- * - Does NOT create or touch authoritative Pothole records.
- * - Does NOT promote or trigger 10m deduplication.
- * 
- * IDEMPOTENCY:
- * If an event with the same edgeEventId was already ingested, the existing
- * CandidateEvent record is returned without creating duplicates.
+ * Ingests a canonical Edge Event Package as a Central Candidate Event,
+ * and automatically triggers deterministic deduplication / incident correlation.
  * 
  * @param {object} payload - Raw event package from RAAHI-Edge
- * @returns {Promise<object>} Ingestion result with CandidateEvent Mongoose document
+ * @returns {Promise<object>} Ingestion result with CandidateEvent and authoritative records
  */
 export async function ingestCandidateEvent(payload) {
   // 1. Validation
@@ -310,6 +304,7 @@ export async function ingestCandidateEvent(payload) {
       },
       confidence: normalized.confidence,
       boundingBox: normalized.boundingBox,
+      trafficTelemetry: normalized.trafficTelemetry,
       evidenceReference: normalized.evidenceReference,
       timestamp: normalized.timestamp,
       busId: normalized.busId,
@@ -319,17 +314,41 @@ export async function ingestCandidateEvent(payload) {
     });
 
     const savedDoc = await candidate.save();
-    console.log(`[CentralIngestion] Ingested candidate event: ${savedDoc.candidateId} (Edge: ${savedDoc.edgeEventId}, Bus: ${normalized.busId}, Status: ${savedDoc.status})`);
+    console.log(`[CentralIngestion] Ingested candidate event: ${savedDoc.candidateId} (Edge: ${savedDoc.edgeEventId}, Bus: ${normalized.busId})`);
+
+    // 6. Deterministic Auto-Promotion / Spatial Deduplication / Traffic Correlation
+    let promotionResult = null;
+    let trafficResult = null;
+
+    if (normalized.eventType === 'pothole' || isSupportedAuthoritativeClass(normalized.class)) {
+      try {
+        promotionResult = await promoteCandidate(savedDoc.candidateId);
+      } catch (promoErr) {
+        console.warn(`[CentralIngestion] Auto-promotion error for ${savedDoc.candidateId}:`, promoErr.message);
+      }
+    } else if (
+      normalized.eventType === 'congestion' ||
+      normalized.eventType === 'traffic' ||
+      normalized.class === 'traffic_congestion'
+    ) {
+      try {
+        trafficResult = await createOrUpdateTrafficIncident(savedDoc);
+      } catch (trfErr) {
+        console.warn(`[CentralIngestion] Traffic incident correlation error for ${savedDoc.candidateId}:`, trfErr.message);
+      }
+    }
 
     return {
       success: true,
       created: true,
       duplicate: false,
-      message: "Candidate event ingested successfully (pending review/promotion).",
+      message: "Candidate event ingested and processed deterministically.",
       candidateId: savedDoc.candidateId,
       edgeEventId: savedDoc.edgeEventId,
       status: savedDoc.status,
-      candidate: savedDoc
+      candidate: savedDoc,
+      promotion: promotionResult,
+      trafficIncident: trafficResult
     };
   } catch (err) {
     // Handle concurrent duplicate key race condition safely
@@ -354,16 +373,6 @@ export async function ingestCandidateEvent(payload) {
 
 /**
  * Retrieves candidate events with optional filtering.
- * Internal Central operations query API.
- * 
- * @param {object} [filters={}]
- * @param {string} [filters.status]
- * @param {string} [filters.busId]
- * @param {string} [filters.eventType]
- * @param {string|boolean} [filters.isPromoted]
- * @param {number} [filters.limit=100]
- * @param {string} [filters.sort='-createdAt']
- * @returns {Promise<{ count: number, candidates: Array }>}
  */
 export async function getCandidateEvents(filters = {}) {
   const query = {};
@@ -397,19 +406,4 @@ export async function getCandidateEvents(filters = {}) {
     count: candidates.length,
     candidates
   };
-}
-
-/**
- * Retrieves a single candidate event by its candidateId (CAN-XXXXXX) or edgeEventId.
- * 
- * @param {string} id - candidateId or edgeEventId
- * @returns {Promise<object|null>}
- */
-export async function getCandidateById(id) {
-  if (!id) return null;
-  const trimmed = id.trim();
-  const doc = await CandidateEvent.findOne({
-    $or: [{ candidateId: trimmed }, { edgeEventId: trimmed }]
-  }).lean();
-  return doc;
 }

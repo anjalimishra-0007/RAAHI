@@ -19,7 +19,7 @@ import {
   fetchCandidates as apiFetchCandidates,
   fetchEvidenceStatus as apiFetchEvidenceStatus
 } from './services/api';
-import { initialBuses } from './data/mockData';
+// import { initialBuses } from './data/mockData';
 
 const STORAGE = 'raahi-dashboard-state-v4';
 const nowTime = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -74,7 +74,9 @@ export default function App() {
     return 'overview';
   };
 
-  const [{ buses, incidents }, setData] = useState(loadState);
+  const [buses, setBuses] = useState([]);
+  const [trafficIncidents, setTrafficIncidents] = useState([]);
+  const [{ incidents }, setData] = useState({ incidents: [] });
   const [live, setLive] = useState(true);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('All');
@@ -210,6 +212,31 @@ export default function App() {
     }
   };
 
+
+  // Real active fleet loader
+  const fetchBusesData = async () => {
+    try {
+      const res = await fetchFleetBuses();
+      if (res && Array.isArray(res.buses)) {
+        setBuses(res.buses);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch fleet buses:', err.message);
+    }
+  };
+
+  // Real traffic incidents loader
+  const fetchTrafficData = async () => {
+    try {
+      const res = await fetchTrafficIncidents();
+      if (res && Array.isArray(res.incidents)) {
+        setTrafficIncidents(res.incidents);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch traffic incidents:', err.message);
+    }
+  };
+
   const fetchEvidenceData = async () => {
     try {
       const data = await apiFetchEvidenceStatus();
@@ -227,6 +254,8 @@ export default function App() {
     fetchPotholeStats();
     fetchCandidatesData();
     fetchEvidenceData();
+    fetchBusesData();
+    fetchTrafficData();
   }, []);
 
   // Real-time periodic refresh (every 6s when live)
@@ -236,6 +265,8 @@ export default function App() {
       fetchPotholes(statusFilter);
       fetchPotholeStats();
       fetchCandidatesData();
+      fetchBusesData();
+      fetchTrafficData();
     }, 6000);
     return () => clearInterval(timer);
   }, [live, statusFilter]);
@@ -282,24 +313,13 @@ export default function App() {
     localStorage.setItem(STORAGE, JSON.stringify({ buses, incidents: [] }));
   }, [buses]);
 
-  // Demo bus movement simulation (clearly marked as demo)
+  // Real-time bus telemetry refreshed from /api/fleet/buses
   useEffect(() => {
     if (!live) return;
     const id = setInterval(() => {
-      setData(s => ({
-        buses: s.buses.map((b, i) =>
-          b.status === 'online'
-            ? {
-                ...b,
-                lat: b.lat + (i % 2 ? 0.00018 : -0.00012),
-                lng: b.lng + (i % 3 ? 0.00013 : -0.0001),
-                speed: Math.max(8, Math.min(48, b.speed + (Math.random() > 0.5 ? 1 : -1)))
-              }
-            : b
-        ),
-        incidents: s.incidents
-      }));
-    }, 4000);
+      fetchBusesData();
+      fetchTrafficData();
+    }, 3000);
     return () => clearInterval(id);
   }, [live]);
 
@@ -570,7 +590,10 @@ export default function App() {
                   <MapView
                     mode="central"
                     potholes={displayedPotholes}
-                    showFleet={false}
+                    buses={buses}
+                    trafficIncidents={trafficIncidents}
+                    gpsLocation={gpsLocation}
+                    showFleet={true}
                     onSelectIncident={selectIncident}
                     loading={loadingPotholes}
                     error={potholesError}
@@ -1038,18 +1061,17 @@ export default function App() {
 // ----------------------------------------------------------------------
 // SUB-PAGE: FLEET (Requirement 11: Clearly marked as Demo Fleet)
 // ----------------------------------------------------------------------
-function FleetPage({ buses, setPage }) {
+function FleetPage({ buses = [], setPage }) {
   return (
     <div className="page">
       <div className="page-title">
         <div>
           <p className="eyebrow">
-            FLEET MANAGEMENT <span className="demo-tag">DEMO FLEET SIMULATION</span>
+            FLEET MANAGEMENT <span className="live-tag" style={{ background: '#052e16', color: '#4ade80', border: '1px solid #166534', padding: '2px 8px', borderRadius: '4px', fontSize: '9px', fontWeight: 800 }}>LIVE EDGE TELEMETRY</span>
           </p>
-          <h2>Connected bus fleet</h2>
+          <h2>Connected Bus Fleet</h2>
           <p>
-            Simulated vehicle positions and edge-device health (12 demo buses).
-            Real hardware GPS telemetry will replace this once hardware units are connected.
+            Live vehicle telemetry and edge-device perception status reported from connected RAAHI buses.
           </p>
         </div>
         <button className="secondary" onClick={() => setPage('overview')}>
@@ -1057,33 +1079,43 @@ function FleetPage({ buses, setPage }) {
         </button>
       </div>
 
-      <div className="fleet-grid">
-        {buses.map(b => (
-          <div className="fleet-card" key={b.id}>
-            <div className="fleet-icon">
-              <BusFront />
-            </div>
-            <div className="fleet-main">
-              <div>
-                <b>{b.id}</b>
-                <span className={`status ${b.status}`}>{b.status}</span>
+      {buses.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 20px', background: '#0b1017', border: '1px solid #1e293b', borderRadius: '12px', color: '#94a3b8' }}>
+          <BusFront style={{ width: 44, height: 44, margin: '0 auto 12px', opacity: 0.5 }} />
+          <b style={{ color: '#cbd5e1', fontSize: '14px', display: 'block' }}>No Active Buses Connected</b>
+          <p style={{ fontSize: '11px', maxWidth: 450, margin: '6px auto 0' }}>
+            Start the RAAHI-Edge pipeline on a vehicle or send phone GPS telemetry to register an active bus in the central fleet.
+          </p>
+        </div>
+      ) : (
+        <div className="fleet-grid">
+          {buses.map(b => (
+            <div className="fleet-card" key={b.id}>
+              <div className="fleet-icon">
+                <BusFront />
               </div>
-              <p>{b.route}</p>
-              <div className="fleet-metrics">
-                <span>
-                  <Gauge /> {b.speed} km/h
-                </span>
-                <span>
-                  <Camera /> {b.camera ? 'Online' : 'Offline'}
-                </span>
-                <span>
-                  <MapPinned /> {b.lat.toFixed(4)}, {b.lng.toFixed(4)} <small style={{ color: '#ffb42d' }}>[DEMO]</small>
-                </span>
+              <div className="fleet-main">
+                <div>
+                  <b>{b.id}</b>
+                  <span className={`status ${b.status}`}>{b.status}</span>
+                </div>
+                <p>{b.route || 'Edge Sensing Unit'}</p>
+                <div className="fleet-metrics">
+                  <span>
+                    <Gauge /> {b.speed || 0} km/h
+                  </span>
+                  <span>
+                    <Camera /> {b.camera ? 'Online' : 'Offline'}
+                  </span>
+                  <span>
+                    <MapPinned /> {typeof b.lat === 'number' ? `${b.lat.toFixed(4)}, ${b.lng.toFixed(4)}` : 'No GPS Fix'}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

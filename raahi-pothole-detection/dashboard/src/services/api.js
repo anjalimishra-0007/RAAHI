@@ -176,3 +176,19 @@ export async function fetchSystemStatus() {
 export async function fetchEvidenceStatus() {
   return request('/api/live/evidence/status');
 }
+
+/**
+ * Fetch real active connected fleet buses.
+ * @returns {Promise<{ success: boolean, count: number, buses: Array }>}
+ */
+export async function fetchFleetBuses() {
+  return request('/api/fleet/buses');
+}
+
+/**
+ * Fetch real traffic incidents from MongoDB.
+ * @returns {Promise<{ success: boolean, count: number, incidents: Array }>}
+ */
+export async function fetchTrafficIncidents() {
+  return request('/api/traffic/incidents');
+}

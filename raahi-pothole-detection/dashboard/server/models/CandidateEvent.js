@@ -9,7 +9,7 @@ import mongoose from 'mongoose';
  * - Candidate Events live in the 'candidate_events' collection.
  * - They are the canonical Central buffer for incoming Edge packages.
  * - They are promoted via 10m Haversine spatial fusion into the authoritative
- *   'Pothole' collection.
+ *   'Pothole' collection, or correlated into 'TrafficIncident' collection.
  */
 const candidateEventSchema = new mongoose.Schema(
   {
@@ -87,10 +87,29 @@ const candidateEventSchema = new mongoose.Schema(
       x2: { type: Number, default: null },
       y2: { type: Number, default: null }
     },
+    trafficTelemetry: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null
+    },
     evidenceReference: {
       type: String,
       trim: true,
       default: ''
+    },
+    videoUrl: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    driveFileId: {
+      type: String,
+      trim: true,
+      default: null
+    },
+    driveWebViewLink: {
+      type: String,
+      trim: true,
+      default: null
     },
     status: {
       type: String,

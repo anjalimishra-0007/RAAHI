@@ -17,6 +17,10 @@ import * as liveDetectionService from './services/liveDetectionService.js';
 import * as liveEvidenceService from './services/liveEvidenceService.js';
 import * as centralEventService from './services/centralEventService.js';
 import * as centralEventPromotionService from './services/centralEventPromotionService.js';
+import http from 'http';
+import CandidateEvent from './models/CandidateEvent.js';
+import TrafficIncident from './models/TrafficIncident.js';
+import * as trafficIncidentService from './services/trafficIncidentService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,6 +45,10 @@ const RESULTS_SUMMARY_PATH = path.join(PROJECT_ROOT, 'results/summary.json');
 
 app.use(cors());
 app.use(express.json());
+app.use('/evidence', express.static(path.join(PROJECT_ROOT, 'videos/evidence')));
+
+// In-memory active fleet registry for connected Edge devices
+const activeFleet = new Map();
 
 // In-memory store for latest phone GPS position (Phase 7 prototype)
 let latestGps = null;
@@ -126,6 +134,26 @@ app.post('/api/central/events', async (req, res) => {
     }
 
     const result = await centralEventService.ingestCandidateEvent(req.body);
+
+    if (req.body && (req.body.busId || req.body.bus)) {
+      const bId = (req.body.busId || req.body.bus).trim();
+      const loc = req.body.location || req.body.gps || {};
+      const bLat = req.body.latitude !== undefined ? parseFloat(req.body.latitude) : parseFloat(loc.latitude);
+      const bLng = req.body.longitude !== undefined ? parseFloat(req.body.longitude) : parseFloat(loc.longitude);
+      if (!isNaN(bLat) && !isNaN(bLng)) {
+        activeFleet.set(bId, {
+          id: bId,
+          route: 'Active Route',
+          lat: bLat,
+          lng: bLng,
+          speed: 0,
+          status: 'online',
+          camera: true,
+          lastSeen: 'Now',
+          updatedAt: Date.now()
+        });
+      }
+    }
     const statusCode = result.duplicate ? 200 : 201;
     return res.status(statusCode).json(result);
   } catch (err) {
@@ -147,6 +175,123 @@ app.post('/api/central/events', async (req, res) => {
 });
 
 // GET /api/central/candidates - List candidate events with optional filters (Phase 2)
+
+/**
+ * POST /api/central/evidence/upload
+ * Canonical Central Evidence Upload endpoint.
+ * Accepts raw binary MP4 video data from RAAHI-Edge, stages locally,
+ * uploads to Google Drive (if authenticated), and attaches to CandidateEvent/Pothole/TrafficIncident.
+ */
+app.post('/api/central/evidence/upload', express.raw({ limit: '100mb', type: ['video/mp4', 'application/octet-stream'] }), async (req, res) => {
+  try {
+    const eventId = req.headers['x-event-id'] || req.query.eventId;
+    const rawFileName = req.headers['x-file-name'] || req.query.fileName;
+    const fileName = (rawFileName ? path.basename(rawFileName) : `${eventId || Date.now()}_evidence.mp4`);
+
+    if (!req.body || req.body.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing file body',
+        message: 'No binary video data received in request body.'
+      });
+    }
+
+    const evidenceDir = path.join(PROJECT_ROOT, 'videos/evidence');
+    if (!fs.existsSync(evidenceDir)) {
+      fs.mkdirSync(evidenceDir, { recursive: true });
+    }
+
+    const targetPath = path.join(evidenceDir, fileName);
+    fs.writeFileSync(targetPath, req.body);
+    console.log(`[CentralEvidence] Saved evidence clip for ${eventId} (${req.body.length} bytes) to ${targetPath}`);
+
+    let driveResult = null;
+    let driveUrl = null;
+    let driveFileId = null;
+
+    if (googleDriveService.isAuthenticated()) {
+      try {
+        driveResult = await googleDriveService.uploadEvidenceClip({
+          filePath: targetPath,
+          fileName,
+          mimeType: 'video/mp4',
+          makePublic: true
+        });
+        driveUrl = driveResult.url;
+        driveFileId = driveResult.fileId;
+        console.log(`[CentralEvidence] Evidence uploaded to Google Drive: ${driveUrl}`);
+      } catch (driveErr) {
+        console.warn(`[CentralEvidence] Google Drive upload failed (clip staged locally): ${driveErr.message}`);
+      }
+    } else {
+      console.log(`[CentralEvidence] Google Drive not authenticated; clip staged locally.`);
+    }
+
+    const localServeUrl = `/evidence/${fileName}`;
+    const authoritativeUrl = driveUrl || localServeUrl;
+
+    if (eventId && isDbConnected()) {
+      try {
+        await CandidateEvent.updateMany(
+          { $or: [{ edgeEventId: eventId }, { candidateId: eventId }] },
+          {
+            $set: {
+              evidenceReference: fileName,
+              videoUrl: authoritativeUrl,
+              driveFileId: driveFileId,
+              driveWebViewLink: driveUrl
+            }
+          }
+        );
+
+        await Pothole.updateMany(
+          { edgeEventId: eventId },
+          {
+            $set: {
+              evidenceReference: fileName,
+              videoUrl: authoritativeUrl,
+              driveFileId: driveFileId,
+              driveWebViewLink: driveUrl
+            }
+          }
+        );
+
+        await TrafficIncident.updateMany(
+          { $or: [{ edgeEventId: eventId }, { edgeEventIds: eventId }] },
+          {
+            $set: {
+              evidenceReference: fileName,
+              videoUrl: authoritativeUrl,
+              driveFileId: driveFileId,
+              driveWebViewLink: driveUrl
+            }
+          }
+        );
+      } catch (dbErr) {
+        console.warn(`[CentralEvidence] DB update warning: ${dbErr.message}`);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      eventId,
+      fileName,
+      sizeBytes: req.body.length,
+      localUrl: localServeUrl,
+      driveUrl: driveUrl,
+      driveFileId: driveFileId,
+      message: 'Evidence clip staged and linked successfully.'
+    });
+  } catch (err) {
+    console.error('[CentralEvidence] Error uploading evidence clip:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: err.message || 'Failed to process evidence clip'
+    });
+  }
+});
+
 app.get('/api/central/candidates', async (req, res) => {
   try {
     if (!isDbConnected()) {
@@ -471,6 +616,36 @@ app.post('/api/gps', (req, res) => {
     connected: true,
     ...sample
   };
+
+  // Update active fleet entry
+  const busId = (req.body && req.body.busId) ? String(req.body.busId).trim() : 'RAAHI-01';
+  activeFleet.set(busId, {
+    id: busId,
+    route: 'Active Route',
+    lat,
+    lng,
+    accuracy: (acc !== null && Number.isFinite(acc)) ? acc : null,
+    speed: req.body?.speed || 0,
+    status: 'online',
+    camera: true,
+    lastSeen: 'Now',
+    updatedAt: Date.now()
+  });
+
+  // Forward GPS telemetry to Edge server on port 5050
+  try {
+    const fwdReq = http.request({
+      hostname: '127.0.0.1',
+      port: 5050,
+      path: '/api/gps',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 1000
+    });
+    fwdReq.on('error', () => {});
+    fwdReq.write(JSON.stringify(req.body));
+    fwdReq.end();
+  } catch (fwdErr) {}
 
   // Append to temporary rolling session history buffer (Task 2 & 3)
   gpsHistory.push(sample);
@@ -960,6 +1135,48 @@ app.get('/api/dev/match-gps-demo', (req, res) => {
 // ==============================================================
 // 5. Persistent Potholes API (MongoDB)
 // ==============================================================
+
+
+// GET /api/fleet/buses - Real active fleet tracking for connected Edge devices
+app.get('/api/fleet/buses', (req, res) => {
+  const buses = [];
+  const now = Date.now();
+  for (const [bId, busInfo] of activeFleet.entries()) {
+    const isOnline = (now - busInfo.updatedAt) < 60000;
+    buses.push({
+      ...busInfo,
+      status: isOnline ? 'online' : 'offline'
+    });
+  }
+  if (buses.length === 0) {
+    if (latestGps && latestGps.connected) {
+      buses.push({
+        id: 'RAAHI-01',
+        route: 'Active Route 1',
+        lat: latestGps.latitude,
+        lng: latestGps.longitude,
+        speed: 0,
+        status: 'online',
+        camera: true,
+        lastSeen: 'Now'
+      });
+    }
+  }
+  res.json({ success: true, count: buses.length, buses });
+});
+
+// GET /api/traffic/incidents - Retrieve correlated traffic incidents from MongoDB
+app.get('/api/traffic/incidents', async (req, res) => {
+  try {
+    if (!isDbConnected()) {
+      return res.json({ success: true, count: 0, incidents: [] });
+    }
+    const incidents = await TrafficIncident.find().sort('-lastDetectedAt').limit(100).lean();
+    res.json({ success: true, count: incidents.length, incidents });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // GET /api/potholes - Retrieve potholes stored in MongoDB
 app.get('/api/potholes', async (req, res) => {
