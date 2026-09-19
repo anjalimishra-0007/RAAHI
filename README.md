@@ -105,7 +105,7 @@ Central acts as the authoritative fleet aggregation tier for **RAAHI-Edge**. Whi
 ### Why Central Exists Separately from Edge
 
 1. **Global Fleet Visibility vs. Local Vehicle Vision**: An edge device in a bus possesses purely local visibility of the roadway ahead. Central maintains fleet-wide visibility, synthesizing disparate observations across routes to identify longitudinal road degradation and recurring bottlenecks.
-2. **Bandwidth Economics & Network Conservation**: Continuous video streaming over cellular uplinks requires sustained high bandwidth and incurs substantial cellular data costs. Central receives **zero continuous video streams for perception**. Instead, buses transmit lightweight JSON event packages and upload targeted, 15-second MP4 evidence clips ($5.0\text{s}$ pre-event + $10.0\text{s}$ post-event) only when physical road hazards or severe traffic conditions are verified.
+2. **Bandwidth Economics & Network Conservation**: Continuous video streaming over cellular uplinks requires sustained high bandwidth and incurs substantial cellular data costs. Central receives **zero continuous video streams for perception**. Instead, buses transmit lightweight JSON event packages and upload targeted, 15-second MP4 evidence clips (5 seconds before the event and 10 seconds after the event, 15s total) only when physical road hazards or severe traffic conditions are verified.
 3. **Architectural Privacy Considerations**: Continuous video uploads to cloud servers capture private citizen faces and license plates. RAAHI addresses this through edge perception: raw video frames remain in volatile buffers on the vehicle and are discarded. Central receives only structured metadata and event-triggered 15-second evidence clips when anomalies occur, minimizing privacy exposure.
 4. **Authoritative Application State**: Transit agencies require an authoritative record to schedule repairs and evaluate infrastructure. Central transforms raw edge detections into auditable civic records with lifecycle status tracking (`open`, `investigating`, `repaired`, `ignored`).
 
@@ -347,7 +347,7 @@ The Central server is implemented in `raahi-pothole-detection/dashboard/server/i
 
 When started via `npm run server` or `node server/index.js`, the server executes:
 1. **Environment Configuration**: Loads variables from `dashboard/.env` via `dotenv.config()`.
-2. **Database Connection**: Invokes `connectDB()` from `server/db.js` to establish an asynchronous connection to MongoDB (defaults to `mongodb://localhost:27017/raahi` or configured `MONGODB_URI`).
+2. **Database Connection**: Invokes `connectDB()` from `server/db.js` to establish a persistent connection to MongoDB.
 3. **Middleware Initialization**:
    - `cors()`: Configures Cross-Origin Resource Sharing to allow web dashboard requests from `http://localhost:5173`.
    - `express.json()`: Body parser for JSON metadata payloads.
@@ -711,9 +711,11 @@ Therefore, **RAAHI-Edge anchors GPS coordinates and timestamps locally at instan
 - `createdAt` represents the Central server ingestion timestamp.
 - Central executes all spatial-temporal correlation against the Edge `timestamp`.
 
-### GPS Precision Disclosures
+### GPS Telemetry & Precision Disclosures
 
-Edge GPS updates are polled at approximately 1 Hz from device GNSS chips. Central validates coordinate boundaries and stores timestamp strings formatted with millisecond resolution, but Central does not alter or increase raw GNSS receiver precision.
+Edge GPS telemetry is captured on the vehicle using Android's `FusedLocationProviderClient`, delivering updates at approximately 1 Hz comprising `latitude`, `longitude`, `accuracy`, and `timestamp`. In physical roadway testing, observed horizontal accuracy was approximately 14–21 meters.
+
+Central validates coordinate boundary limits ($-90.0 \le \text{latitude} \le 90.0$, $-180.0 \le \text{longitude} \le 180.0$) and stores timestamps formatted with millisecond resolution. However, Central does not alter or artificially increase physical GNSS accuracy.
 
 ### Temporal Window Matching
 
@@ -877,7 +879,7 @@ The Central React dashboard polls this endpoint every 6 seconds, rendering pulsi
 
 # 15. Evidence Upload Pipeline
 
-When an edge device detects a high-confidence road hazard or severe traffic condition, it generates a 15-second MP4 evidence clip consisting of **5.0 seconds pre-event + 10.0 seconds post-event** ($t_0 - 5.0\text{s}$ to $t_0 + 10.0\text{s}$; 150 pre-frames + 300 post-frames at 30 FPS = 450 frames total). This clip is transmitted via:
+When an edge device detects a high-confidence road hazard or severe traffic condition, it generates a 15-second MP4 evidence clip consisting of **5 seconds before the event and 10 seconds after the event** ($t_0 - 5.0\text{s}$ to $t_0 + 10.0\text{s}$; 150 pre-frames + 300 post-frames at 30 FPS = 450 frames total). This clip is transmitted via:
 
 ```http
 POST /api/central/evidence/upload
@@ -1382,25 +1384,9 @@ The collaboration between RAAHI-Edge and RAAHI-Central is organized into determi
 
 ### Flow 2: Multi-Bus Traffic Congestion Correlation
 
-1. **First Transit Vehicle (Bus `RAAHI-01`)**:
-   - Traverses an arterial road corridor at 08:30:00 AM.
-   - Detects severe vehicle clustering (density: 0.78, vehicle count: 24, speed: 6 km/h).
-   - Transmits candidate traffic event at coordinate $(28.6140^{\circ}, 77.2100^{\circ})$.
-   - Central stages candidate in `candidate_events`. Because there is no existing incident within 50 meters, Central records this as an initial single-bus incident.
-
-2. **Second Transit Vehicle (Bus `RAAHI-03`)**:
-   - Traverses the same corridor 4 minutes later (08:34:15 AM) at $(28.6142^{\circ}, 77.2103^{\circ})$ — approximately 35 meters from Bus 1's report.
-   - Observes persistent low speed (8 km/h) and vehicle clustering.
-   - Transmits traffic event metadata to Central.
-
-3. **Central Deterministic Correlation**:
-   - Central calculates Haversine spatial distance: $35.4\text{ m} \le 50.0\text{ m}$.
-   - Central calculates temporal separation: $255\text{ s} \le 600\text{ s}$ (10-minute window).
-   - Match verified! Central updates the active incident record:
-     - Adds `RAAHI-03` to `reportingBuses`.
-     - Increments `confirmationCount` to 2.
-     - Escalates status from `UNCONFIRMED` to `MULTI_BUS_VERIFIED`.
-     - Updates the municipal dashboard with a validated traffic incident.
+1. **First Transit Vehicle (Bus `RAAHI-01`)**: Traverses an arterial corridor at 08:30:00 AM, detects low speed (6 km/h) and vehicle clustering, and transmits a candidate event at $(28.6140^{\circ}, 77.2100^{\circ})$. Central stages it as an initial incident.
+2. **Second Transit Vehicle (Bus `RAAHI-03`)**: Traverses the corridor 4 minutes later at $(28.6142^{\circ}, 77.2103^{\circ})$—35 meters away—confirming congestion.
+3. **Central Deterministic Correlation**: Central calculates Haversine distance ($35.4\text{ m} \le 50.0\text{ m}$) and temporal delta ($255\text{ s} \le 600\text{ s}$). Match verified: Central adds `RAAHI-03`, increments confirmation count to 2, escalates status to `MULTI_BUS_VERIFIED`, and renders the incident on the dashboard.
 
 ---
 
@@ -1518,7 +1504,7 @@ MongoDB collections are optimized for spatial and temporal queries:
 
 ### 4. Fleet Scaling as an Architectural Capability
 
-The event-driven model provides substantial architectural scalability. Unlike traditional surveillance architectures where each vehicle continuously streams 1080p video (generating gigabytes of data per hour per vehicle), RAAHI Edge units transmit only sparse metadata when a defect is encountered. A single Central server can comfortably coordinate dozens of transit routes because network traffic is event-driven rather than continuous.
+Support for multi-vehicle transit fleets is an architectural capability of RAAHI's decoupled design. Unlike traditional surveillance architectures where vehicles continuously stream high-definition video across cellular channels, RAAHI Edge units transmit only sparse metadata upon defect detection. Physical validation was performed using the physical Samsung Galaxy S23 FE testbed setup; architecturally, this event-driven model allows a single Central server to coordinate multiple transit corridors without network congestion.
 
 ---
 
@@ -1666,7 +1652,7 @@ While RAAHI Central provides a deterministic aggregation and GIS platform, sever
    Evidence clip uploads in `POST /api/central/evidence/upload` invoke `googleDriveService.uploadEvidenceClip()` synchronously within the HTTP route handler. Under poor network conditions or Google API throttling, the HTTP response time can extend until the cloud upload completes or times out.
 
 3. **Edge GPS Physical Precision**:
-   Vehicle GPS receivers on edge transit units update at approximately 1 Hz (one sample per second). Central validates coordinates and formats timestamps with millisecond precision, but mathematical timestamp formatting does not alter the underlying physical sampling rate of the GNSS receiver.
+   Vehicle GPS telemetry on edge transit units relies on Android's `FusedLocationProviderClient` updating at approximately 1 Hz (one sample per second). In physical roadway testing, observed horizontal positioning accuracy was approximately 14–21 meters. Central validates coordinates and stores timestamps with millisecond formatting, but does not increase physical GNSS accuracy.
 
 4. **Dashboard Polling Update Loop**:
    The Leaflet municipal dashboard relies on periodic client-side polling (2-second intervals for fleet telemetry, 6-second intervals for defect updates) rather than push-based WebSockets or Server-Sent Events (SSE).
@@ -1867,7 +1853,7 @@ git lfs pull
 - **Haversine Formula**: Spherical trigonometric equation calculating great-circle distances between GPS coordinates.
 - **Spatial Deduplication**: Deterministic algorithm matching defect coordinates within 10 meters to prevent duplicate records.
 - **Multi-Bus Correlation**: Correlation engine verifying traffic reports across buses within a 50m / 10-minute window.
-- **Evidence Clip**: 15.0-second MP4 file ($t_0 - 5.0\text{s}$ pre-event + $t_0 + 10.0\text{s}$ post-event = 450 frames @ 30 FPS) providing visual proof.
+- **Evidence Clip**: 15.0-second MP4 file (5 seconds before the event and 10 seconds after the event, $t_0 - 5.0\text{s}$ to $t_0 + 10.0\text{s} = 450$ frames @ 30 FPS) providing visual proof.
 - **GNSS / GPS**: Vehicle satellite receiver delivering telemetry at ~1 Hz.
 - **Zero Central AI**: Invariant that Central performs strictly zero neural network or VLM inference, remaining deterministic.
 
