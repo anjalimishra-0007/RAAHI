@@ -19,12 +19,13 @@
 |                                                                                       |
 |   Central intelligence is 100% deterministic and software-based:                     |
 |     * Schema sanitization & defensive validation                                     |
+|     * Candidate event staging & historical audit trail                                |
 |     * Mathematical Haversine 10-meter geospatial deduplication                        |
 |     * Temporal & spatial cross-bus traffic correlation (50m / 10min window)           |
 |     * Multi-bus fleet aggregation & severity escalation                               |
-|     * Asynchronous Google Drive OAuth2 digital evidence upload                        |
-|     * MongoDB civic state persistence ('candidate_events', 'potholes', 'traffic')     |
-|     * Leaflet GIS cartography & municipal dashboard presentation                      |
+|     * Request-driven Google Drive OAuth2 digital evidence synchronization             |
+|     * Authoritative application state persistence ('candidate_events', 'potholes')    |
+|     * Leaflet GIS cartography & municipal dashboard visualization                     |
 +---------------------------------------------------------------------------------------+
 ```
 
@@ -71,18 +72,18 @@
 
 ---
 
-
 # 1. RAAHI Central Overview
 
-**RAAHI Central** (Road Assessment and Hazard Intelligence — Central Aggregation System) is the authoritative cloud and server-side intelligence hub for Project RAAHI. Deployed as an asynchronous Node.js and Express 4.21 service backed by MongoDB 9.10, RAAHI Central provides centralized geospatial deduplication, cross-bus traffic correlation, fleet telemetry monitoring, digital video evidence synchronization via Google Drive, and interactive GIS visualization for municipal transit authorities.
+**RAAHI Central** (Road Assessment and Hazard Intelligence) is the server-side aggregation hub and municipal GIS platform for Project RAAHI. Built with Node.js, Express 4.21, and MongoDB 9.10, Central delivers deterministic geospatial deduplication, multi-bus traffic correlation, fleet telemetry tracking, digital video evidence synchronization via Google Drive, and interactive Leaflet GIS visualization.
 
-In the RAAHI ecosystem, Central acts as global aggregator to **RAAHI-Edge**. While Edge runs computer vision on buses, Central aggregates distributed observations across time, space, and fleets to establish an authoritative single source of truth for road quality and traffic.
+Central acts as the authoritative fleet aggregation tier for **RAAHI-Edge**. While Edge executes on-vehicle computer vision and tracking, Central aggregates observations across time, space, and transit fleets into an authoritative database state.
 
 ```
 +-------------------------------------------------------------------------+
 |                               RAAHI-EDGE                                |
 |  Samsung S23 FE Camera -> MediaMTX RTSP -> Dual YOLO11n (MPS/NPU)       |
-|  -> ByteTrack Tracker -> Event Engine -> GPS Association -> 15s MP4     |
+|  -> ByteTrack Tracker -> Event Engine -> GPS Association                |
+|  -> 15s Evidence Extraction (5.0s pre-event + 10.0s post-event)         |
 +-------------------------------------------------------------------------+
                                      │
                Event JSON Metadata   │   15-Second MP4 Evidence
@@ -95,25 +96,25 @@ In the RAAHI ecosystem, Central acts as global aggregator to **RAAHI-Edge**. Whi
 |  -> Candidate Event Staging ('candidate_events' collection)             |
 |  -> Haversine Mathematical Spatial Deduplication (10m Radius)           |
 |  -> Spatial-Temporal Traffic Incident Correlation (50m / 10min Window)  |
-|  -> Asynchronous Video Evidence Sync -> Google Drive API (OAuth 2.0)    |
+|  -> Request-Driven Video Evidence Sync -> Google Drive API (OAuth 2.0)  |
 |  -> Authoritative Persistence ('potholes' & 'trafficincidents')        |
-|  -> Leaflet GIS Real-Time Municipal Dashboard (Port 5173)               |
+|  -> Leaflet GIS Municipal Dashboard (Port 5173, 6s Polling Loop)        |
 +-------------------------------------------------------------------------+
 ```
 
 ### Why Central Exists Separately from Edge
 
-1. **Global Fleet Visibility vs. Local Vehicle Vision**: An edge device in a bus cab possesses purely local, ephemeral visibility of the road surface immediately ahead. RAAHI Central maintains continuous visibility across the entire transit network, synthesizing hundreds of thousands of disparate edge observations from dozens of bus routes to identify longitudinal road degradation and recurring traffic bottlenecks.
-2. **Bandwidth Economics & Network Conservation**: Transmitting continuous 1080p H.264 video at 30 FPS over 4G/5G cellular connections requires 4.5 Mbps per bus (~3.24 TB/day for 100 buses). Central receives **zero continuous video**. Buses transmit lightweight JSON event packages (~1 KB each) and upload targeted, 15-second MP4 clips (~3–5 MB) only when physical road hazards or severe traffic conditions are verified.
-3. **Data Privacy and Regulatory Compliance**: Continuous camera uploads capture private citizen faces, license plates, and storefronts. RAAHI terminates video processing at the vehicle edge; raw video is held in volatile local memory buffers and purged unless a verified hazard triggers a localized evidence slice.
-4. **Authoritative Municipal Governance**: Transit agencies and public works departments require an authoritative, auditable repository to schedule road resurfacing, issue contractor repair tickets, and evaluate infrastructure lifespan. Central transforms raw edge detections into auditable civic records complete with lifecycle status tracking (`open`, `investigating`, `repaired`, `ignored`).
+1. **Global Fleet Visibility vs. Local Vehicle Vision**: An edge device in a bus possesses purely local visibility of the roadway ahead. Central maintains fleet-wide visibility, synthesizing disparate observations across routes to identify longitudinal road degradation and recurring bottlenecks.
+2. **Bandwidth Economics & Network Conservation**: Continuous video streaming over cellular uplinks requires sustained high bandwidth and incurs substantial cellular data costs. Central receives **zero continuous video streams for perception**. Instead, buses transmit lightweight JSON event packages and upload targeted, 15-second MP4 evidence clips ($5.0\text{s}$ pre-event + $10.0\text{s}$ post-event) only when physical road hazards or severe traffic conditions are verified.
+3. **Architectural Privacy Considerations**: Continuous video uploads to cloud servers capture private citizen faces and license plates. RAAHI addresses this through edge perception: raw video frames remain in volatile buffers on the vehicle and are discarded. Central receives only structured metadata and event-triggered 15-second evidence clips when anomalies occur, minimizing privacy exposure.
+4. **Authoritative Application State**: Transit agencies require an authoritative record to schedule repairs and evaluate infrastructure. Central transforms raw edge detections into auditable civic records with lifecycle status tracking (`open`, `investigating`, `repaired`, `ignored`).
 
 ### Data Ingestion and Processing Lifecycle
 
 RAAHI Central receives two discrete streams from connected edge units:
 1. **Lightweight Event Packages (`POST /api/central/events`)**: Structured JSON containing `eventId`, `busId`, `eventType` (`pothole`, `congestion`), UTC `timestamp` ($t_0$), high-precision `location` (`latitude`, `longitude`, `accuracy`), `edgeModel` (`YOLO11n`), `confidence`, `class`, `boundingBox` (`x1, y1, x2, y2`), optional `trafficTelemetry`, and `evidenceReference`.
-2. **Binary Video Evidence Clips (`POST /api/central/evidence/upload`)**: Targeted 15-second MP4 clips ($t_0 \pm 7.5	ext{s}$) providing visual verification of detected road defects or congestion bottlenecks.
-3. **Live GPS Telemetry (`POST /api/gps`)**: Periodic vehicle coordinate updates that populate Central's real-time fleet tracking map.
+2. **Binary Video Evidence Clips (`POST /api/central/evidence/upload`)**: Targeted 15-second MP4 clips ($t_0 - 5.0\text{s}$ to $t_0 + 10.0\text{s}$) providing visual verification of detected road defects or congestion bottlenecks.
+3. **Live GPS Telemetry (`POST /api/gps`)**: Periodic vehicle coordinate updates that populate Central's fleet tracking map.
 
 Upon receiving edge data, Central validates schemas, enforces idempotency, stages candidates in `candidate_events`, executes 10-meter Haversine deduplication for potholes, correlates multi-bus traffic reports within 50m / 10-minute windows, syncs evidence to Google Drive, and updates the GIS dashboard. When multiple buses detect the same pothole, Central fuses them into a single record with incremented observation counts and combined reporting bus IDs.
 
@@ -133,7 +134,7 @@ The complete RAAHI system bridges edge perception on transit vehicles with centr
                                       ▼ (Hardware H.264 / RTSP Stream)
    +---------------------------------------------------------------------+
    |  MediaMTX RTSP Server & Video Capture (capture/rtsp_receiver.py)    |
-   |  -> Circular Ring Buffer (ring_buffer/)                             |
+   |  -> Circular Ring Buffer (ring_buffer/rolling_buffer.py)            |
    +---------------------------------------------------------------------+
                                       │
                                       ▼ (Decoded Video Frames)
@@ -146,12 +147,12 @@ The complete RAAHI system bridges edge perception on transit vehicles with centr
                                       ▼ (Detections & Trajectories)
    +---------------------------------------------------------------------+
    |  Edge Event & Evidence Engine (events/ & evidence/)                 |
-   |  -> GPS Synchronization (gps/gps_manager.py)                        |
-   |  -> 15s MP4 Evidence Slicer (7.5s pre + 7.5s post buffer)           |
+   |  -> GPS Synchronization (gps/gps_manager.py, ~1 Hz GNSS Updates)    |
+   |  -> 15s MP4 Evidence Slicer (5.0s pre-event + 10.0s post-event)     |
    |  -> SQLite Local Queue (storage/raahi_local.db)                     |
    +---------------------------------------------------------------------+
                                       │
-                                      │ 4G / 5G Cellular Uplink
+                                      │ Cellular Internet Uplink
                                       ▼
    CENTRAL CLOUD / SERVER (RAAHI-CENTRAL)
    +---------------------------------------------------------------------+
@@ -180,21 +181,21 @@ The complete RAAHI system bridges edge perception on transit vehicles with centr
                                       ▼
    +---------------------------------------------------------------------+
    |  Digital Video Evidence Pipeline (services/googleDriveService.js)   |
-   |  -> Staged in videos/evidence/ -> Google Drive API v3 (OAuth 2.0)   |
+   |  -> Staged in videos/evidence/ -> Request-Driven Google Drive Sync  |
    +---------------------------------------------------------------------+
                                       │
                                       ▼
    +---------------------------------------------------------------------+
    |  Central Web Dashboard & GIS System (Port 5173)                     |
-   |  -> React 18 + Vite 6 + Leaflet 1.9 Cartography                     |
+   |  -> React 18 + Vite 6 + Leaflet 1.9 Cartography (6s Polling)        |
    +---------------------------------------------------------------------+
 ```
 
 ### The Edge / Central Architectural Boundary
 
-1. **The Perception Invariant**: High-frequency frame processing, object detection, and feature tracking belong 100% to the edge. Central never performs video perception.
-2. **The Telemetry Association Invariant**: Edge devices are physically co-located with vehicle sensors. Video frame detections and GPS coordinates are associated locally at millisecond resolution ($t_0$). Central never attempts to re-synchronize unsynchronized coordinates.
-3. **The State Authority Invariant**: While Edge owns the immediate observation, Central owns the persistent civic state. Only Central declares whether an observation creates a new road defect or updates an existing municipal record.
+1. **The Perception Invariant**: High-frequency frame processing, object detection, and feature tracking belong 100% to the edge. Central never performs video perception and does not receive continuous raw video streams.
+2. **The Telemetry Association Invariant**: Edge devices are physically co-located with vehicle sensors. Video frame detections and GPS coordinates are associated locally at detection time ($t_0$). Central validates coordinate boundaries and records timestamps, but does not alter or increase raw GNSS receiver precision.
+3. **The State Authority Invariant**: While Edge owns the immediate observation, Central owns the authoritative application and database state for the system. Only Central determines whether an observation creates a new road defect or updates an existing record.
 
 
 ---
@@ -203,27 +204,27 @@ The complete RAAHI system bridges edge perception on transit vehicles with centr
 
 | Architectural Dimension | RAAHI-Edge (Vehicle Node) | RAAHI-Central (Cloud / Server Node) |
 | :--- | :--- | :--- |
-| **Physical Location** | Vehicle cabin (windshield mount) | Central cloud server / datacenter |
+| **Physical Location** | Vehicle cabin (windshield mount) | Central cloud server / development machine |
 | **Hardware Platform** | Samsung S23 FE / Apple Silicon Edge Node | Standard Linux/macOS CPU Server |
-| **Video Camera Ingestion** | Hardware 1080p @ 30 FPS ingestion via RTSP | **Zero raw video ingestion** (receives only 15s MP4 clips) |
+| **Video Camera Ingestion** | Hardware 1080p @ 30 FPS ingestion via RTSP | **Zero continuous video ingestion** (receives 15s MP4 clips only) |
 | **AI / Machine Learning** | **100% of AI Inference** (Dual YOLO11n on MPS/NPU) | **0% AI Inference** (Strictly zero VLM, LLM, or YOLO) |
 | **Object Detection** | Potholes, road cracks, vehicles, obstacles | None |
 | **Multi-Object Tracking** | ByteTrack tracking vehicle bounding boxes | None |
 | **Traffic Perception** | ROI polygon occupancy, vehicle counting, flow rate | None |
-| **Evidence Extraction** | Slices $t_0 \pm 7.5	ext{s}$ clips from circular ring buffer | Receives, stages, and streams binary MP4 to Google Drive |
-| **GPS Association** | Millisecond timestamp matching at detection time | Validates coordinate bounds and stores telemetry |
-| **Offline Buffering** | Local SQLite queue with exponential backoff retries | None (assumed highly available cloud endpoint) |
+| **Evidence Extraction** | Slices $t_0 - 5.0\text{s}$ to $t_0 + 10.0\text{s}$ clips (15s total) | Receives, stages to disk, and uploads MP4 to Google Drive |
+| **GPS Association** | Associates GPS (~1 Hz) at event trigger instant $t_0$ | Validates coordinate bounds and stores telemetry |
+| **Offline Buffering** | Local SQLite queue with retry backoff | None (assumes available Central HTTP endpoint) |
 | **Data Ingestion Gateway** | HTTP client transmitting event payloads | Express REST endpoints (`/api/central/events`, `/upload`) |
 | **Data Validation** | Local schema encoding | Authoritative structural and coordinate sanitization |
 | **Spatial Deduplication** | None (reports all verified local detections) | **Haversine 10m clustering** fusing multi-bus passes |
 | **Traffic Correlation** | Local road segment congestion calculation | **50m / 10min multi-bus fusion** and severity escalation |
-| **Authoritative State** | None (ephemeral local observation state) | **Canonical database records** (`potholes`, `trafficincidents`) |
+| **Authoritative State** | None (ephemeral local observation state) | **Authoritative database records** (`potholes`, `trafficincidents`) |
 | **Incident Lifecycle** | None | Status mutation (`open`, `investigating`, `repaired`) |
 | **Storage Engine** | SQLite (`storage/raahi_local.db`) | MongoDB (`candidate_events`, `potholes`, `trafficincidents`) |
 | **Cloud Evidence Storage** | None | Google Drive API v3 (OAuth 2.0 integration) |
 | **Cartography / GIS** | Local development view | **Leaflet 1.9 GIS Dashboard** with full municipal overlay |
 | **Fleet Monitoring** | Transmits periodic GPS breadcrumbs | Maintains in-memory active fleet registry and status |
-| **Operational Cost** | Local vehicle power consumption | $5–$20/month standard VPS (zero cloud GPU fees) |
+| **Inference Cost** | Local vehicle power consumption | $0.00 cloud GPU fees (runs on standard CPU) |
 
 > [!IMPORTANT]
 > **Zero AI / VLM / LLM Invariant**: RAAHI-Central performs **ZERO** artificial intelligence inference. Central does not execute computer vision models, Vision-Language Models (VLMs), Large Language Models (LLMs), or cloud YOLO networks. Central's intelligence is completely deterministic and algorithmic, relying on spherical trigonometry, temporal window comparisons, schema validation, and relational state graphs.
@@ -236,77 +237,74 @@ The complete RAAHI system bridges edge perception on transit vehicles with centr
 RAAHI Central is intentionally architected as a **100% deterministic software system**. Project RAAHI deliberately rejects cloud-side VLM/LLM inference in favor of mathematical rigor, deterministic algorithms, and edge-first perception.
 
 ### 1. Mathematical Reproducibility & Verifiability
-Geographic space on planet Earth is governed by the laws of spherical geometry. If Bus `RAAHI-01` detects a road hazard at $(28.64874^{\circ}, 77.50414^{\circ})$ and Bus `RAAHI-02` detects a hazard at $(28.64877^{\circ}, 77.50417^{\circ})$, the great-circle distance between these two detections is precisely $4.53$ meters. Because $4.53	ext{ m} \le 10.00	ext{ m}$, they deterministically represent the same physical pothole.
+Geographic space on planet Earth is governed by spherical geometry. If Bus `RAAHI-01` detects a road hazard at $(28.64874^{\circ}, 77.50414^{\circ})$ and Bus `RAAHI-02` detects a hazard at $(28.64877^{\circ}, 77.50417^{\circ})$, the great-circle distance between these two detections is approximately $4.21$ meters. Because $4.21\text{ m} \le 10.00\text{ m}$, they deterministically represent the same physical pothole.
 
-A probabilistic Vision-Language Model introduces temperature variance, prompt sensitivity, and hallucination risk. Central's Haversine deduplication algorithm produces identical, verifiable, and mathematically provable results across $100\%$ of executions.
+A probabilistic Vision-Language Model introduces non-deterministic sampling, temperature variance, prompt sensitivity, and hallucination risk. Central's Haversine deduplication algorithm produces verifiable, mathematically provable results across executions.
 
-### 2. Predictable Behavior & Mission-Critical Safety
-Municipal civil engineering departments require deterministic workflows. A municipal repair order cannot be generated based on a probabilistic output score that may fluctuate across software updates. By anchoring Central's intelligence in explicit boundary checks, defined spatial thresholds, and strict enum state machines (`open` $
-ightarrow$ `investigating` $
-ightarrow$ `repaired`), system behavior remains completely predictable under all operational conditions.
+### 2. Predictable Behavior & Civic Verification
+Municipal civil engineering departments require deterministic workflows. A municipal repair order cannot be generated based on a probabilistic output score that may fluctuate across model versions. By anchoring Central's intelligence in explicit boundary checks, defined spatial thresholds, and strict enum state machines (`open` $\rightarrow$ `investigating` $\rightarrow$ `repaired`), system behavior remains completely predictable under all operational conditions.
 
-### 3. Radical Cloud Operating Cost Reduction
-Deploying cloud-side AI inference for a municipal fleet is financially unsustainable for city governments:
-- **Cloud GPU Costs**: Running continuous VLM or YOLO inference on cloud instances (e.g., AWS `g5.2xlarge` with NVIDIA A10G GPUs) costs between $\$1.00$ and $\$2.50$ per hour per instance. A 100-bus deployment requires a GPU cluster costing over $\$15,000$ per month.
-- **Deterministic Central Costs**: Because RAAHI Central executes only lightweight mathematical arithmetic, schema validation, and database operations, the entire Central platform runs efficiently on a single entry-level CPU VPS (2 vCPU, 4 GB RAM on AWS Lightsail or DigitalOcean) costing approximately $\$10$ to $\$20$ per month.
-- **Bandwidth Savings**: Eliminating continuous raw video ingestion slashes cloud data transfer costs by $99.8\%$.
+### 3. Architectural Cost Rationale
+Deploying cloud-side AI inference for transit fleets introduces significant infrastructure overhead:
+- **Cloud GPU Rationale**: Continuous VLM or YOLO inference on cloud GPU instances requires continuous high-end hardware. Central eliminates cloud GPU requirements entirely, operating on standard CPU infrastructure.
+- **Bandwidth Rationale**: Eliminating continuous raw video ingestion in favor of lightweight JSON packages and event-triggered 15-second clips drastically reduces cellular data transfer requirements.
 
-### 4. Transparent Auditability & Civic Accountability
+### 4. Transparent Auditability
 Civic authorities must be capable of auditing why a specific pothole was prioritized. Central provides an explainable audit trail:
-$$	ext{Pothole } POT-000042 \leftarrow 	ext{Fused from Candidates } [CAN-000102, CAN-000189, CAN-000244]$$
-Each candidate references the exact vehicle ID, UTC millisecond timestamp, GPS coordinates, edge detector confidence, and permanent Google Drive video clip. Any civil engineer can independently verify the calculations without black-box opacity.
+$$\text{Pothole } POT-000042 \leftarrow \text{Fused from Candidates } [CAN-000102, CAN-000189, CAN-000244]$$
+Each candidate references the vehicle ID, UTC timestamp, GPS coordinates, edge detector confidence, and associated Google Drive video clip. Any civil engineer can independently verify the calculations without black-box opacity.
 
-### 5. Microsecond Processing Latency
-Executing an API call to a cloud VLM or hosted multimodal LLM requires between $1,500$ and $4,000$ milliseconds per event. In contrast, evaluating Haversine distance, updating Mongoose schemas, and executing multi-bus correlation in Node.js takes less than **2.5 milliseconds** per event.
+### 5. Algorithmic Efficiency
+Evaluating Haversine distance, updating Mongoose schemas, and executing multi-bus correlation involves lightweight arithmetic operations that execute rapidly on standard CPU threads, avoiding external cloud model invocation latencies.
 
 ### 6. Clean Separation of Concerns
-Edge computing solves the **perception problem** (extracting structured hazard vectors from noisy optical photons). Central computing solves the **aggregation problem** (synthesizing structured hazard vectors across time and space into actionable municipal intelligence).
+Edge computing solves the **perception problem** (extracting structured hazard vectors from optical frames). Central computing solves the **aggregation problem** (synthesizing structured hazard vectors across time and space into actionable municipal intelligence).
 
 
 ---
 
 # 5. Repository Architecture
 
-The RAAHI Central repository contains the complete Node.js/Express backend server, the MongoDB data schemas, deterministic service libraries, test suites, and the React/Vite web dashboard.
+The RAAHI Central repository contains the Node.js/Express backend server, MongoDB data schemas, deterministic service libraries, test suites, and the React/Vite web dashboard.
 
 ```
 /Users/ujjwalraj/Desktop/RAAHI22/
-├── README.md                                          # Authoritative RAAHI Central Technical Manual
-├── .gitignore
-├── .gitattributes
+├── README.md                                          # Authoritative RAAHI Central Manual
+├── .gitignore                                         # Git ignore rules
+├── .gitattributes                                     # Git LFS tracking configuration
 │
 └── raahi-pothole-detection/
-    ├── package.json
-    ├── requirements.txt
-    ├── auto.crt / auto.key
-    ├── mediamtx.yml
+    ├── package.json                                   # Root project metadata
+    ├── requirements.txt                               # Legacy dependencies
+    ├── auto.crt / auto.key                            # Self-signed SSL certificates
+    ├── mediamtx.yml                                   # RTSP server config
     │
-    ├── models/
-    │   └── pothole_yolo11n.pt                         # Fine-tuned YOLO11n weights (Tracked via Git LFS)
+    ├── models/                                        # Reference weights (Git LFS)
+    │   └── pothole_yolo11n.pt
     │
-    ├── dataset/
-    │   └── Pothole Detection.v1i.yolov11.zip          # Raw dataset archive (Tracked via Git LFS)
+    ├── dataset/                                       # Reference dataset (Git LFS)
+    │   └── Pothole Detection.v1i.yolov11.zip
     │
     ├── videos/                                        # Local video assets and evidence staging
-    │   ├── input/                                     # Raw input test videos (cityRoad_potHoles-side.mp4)
+    │   ├── input/                                     # Reference input test videos
     │   ├── output/                                    # Processed annotated benchmark videos
     │   └── evidence/                                  # Staging directory for received 15s MP4 clips
     │
-    ├── results/                                       # Benchmark outputs and static detection logs
-    │   ├── detections.json                            # Frame-by-frame YOLO detections from benchmark
-    │   └── summary.json                               # Summary metrics (608 frames, 25 FPS, 63 detections)
+    ├── results/                                       # Benchmark outputs
+    │   ├── detections.json
+    │   └── summary.json
     │
-    ├── src/                                           # Legacy edge scripts (migrated to RAAHI-Edge)
-    │   ├── detect.py                                  # Static video detection benchmark
-    │   ├── live_camera.py                             # Prototype camera receiver
-    │   └── traffic/                                   # Prototype traffic tracker modules
+    ├── src/                                           # Legacy perception scripts (migrated to Edge)
+    │   ├── detect.py
+    │   ├── live_camera.py
+    │   └── traffic/
     │
     └── dashboard/                                     # Canonical Central Server & Web Application
-        ├── package.json
-        ├── package-lock.json
-        ├── vite.config.js
-        ├── index.html
-        ├── .env.example
+        ├── package.json                               # Node.js dependencies & scripts
+        ├── package-lock.json                          # Pinned dependency tree
+        ├── vite.config.js                             # Vite bundler configuration (Port 5173, proxy /api)
+        ├── index.html                                 # HTML5 application entry point
+        ├── .env.example                               # Canonical environment variable template
         │
         ├── server/                                    # Express.js Central Backend (Port 5001)
         │   ├── index.js                               # Express server entry point & routes
@@ -334,7 +332,7 @@ The RAAHI Central repository contains the complete Node.js/Express backend serve
             ├── App.jsx                                # Master dashboard layout, state & polling loop
             ├── styles.css                             # Unified dark-mode stylesheet
             ├── components/                            # MapView, IncidentList, StatCard, etc.
-            ├── services/api.js                        # Axios/Fetch API client communicating with Port 5001
+            ├── services/api.js                        # API client communicating with Port 5001
             └── data/mockData.js                       # Fallback demo fleet markers
 ```
 
@@ -343,7 +341,7 @@ The RAAHI Central repository contains the complete Node.js/Express backend serve
 
 # 6. Central Server
 
-The Central server is implemented in `raahi-pothole-detection/dashboard/server/index.js` using Node.js (ES Module syntax) and Express 4.21.2. It acts as the high-concurrency ingestion and API gateway for all RAAHI edge devices and web dashboard clients.
+The Central server is implemented in `raahi-pothole-detection/dashboard/server/index.js` using Node.js (ES Module syntax) and Express 4.21.2. It acts as the ingestion and API gateway for all RAAHI edge devices and web dashboard clients.
 
 ### Server Architecture & Startup Lifecycle
 
@@ -355,7 +353,7 @@ When started via `npm run server` or `node server/index.js`, the server executes
    - `express.json()`: Body parser for JSON metadata payloads.
    - `express.static()`: Mounts `videos/evidence/` at `/evidence`, enabling direct local HTTP video playback fallback.
 4. **In-Memory State Initialization**:
-   - `activeFleet = new Map()`: High-speed in-memory registry tracking connected edge devices, coordinates, speeds, and liveness.
+   - `activeFleet = new Map()`: In-memory registry tracking connected edge devices, coordinates, speeds, and liveness.
    - `latestGps`: Stores the latest received GPS breadcrumb.
    - `gpsHistory`: Rolling circular array of the last 1,000 GPS breadcrumbs (`MAX_GPS_HISTORY`).
 5. **Port Binding**: Binds to `process.env.PORT || 5001` and begins listening for HTTP requests.
@@ -390,7 +388,7 @@ export function isDbConnected() {
 }
 ```
 
-If MongoDB is offline, Central returns HTTP `503 Service Unavailable` on ingestion requests rather than crashing. The `GET /api/status` endpoint provides real-time operational metrics to municipal load balancers.
+If MongoDB is offline, Central returns HTTP `503 Service Unavailable` on ingestion requests rather than crashing. The `GET /api/status` endpoint provides operational metrics to system monitoring agents.
 
 
 ---
@@ -404,7 +402,7 @@ POST /api/central/events
 Content-Type: application/json
 ```
 
-This endpoint receives structured Event Packages from RAAHI-Edge devices operating on buses across the city. It implements end-to-end validation, normalization, idempotency checking, candidate staging, and automatic deterministic promotion.
+This endpoint receives structured Event Packages from RAAHI-Edge devices operating on buses. It implements end-to-end validation, normalization, idempotency checking, candidate staging, and automatic deterministic promotion.
 
 ```
 Edge Event Package (JSON)
@@ -474,19 +472,19 @@ Return HTTP 201 Created (candidateId, promotion/correlation results)
 3. **Sequential Candidate ID Generation (`getNextCandidateId`)**: Generates unique zero-padded IDs (e.g., `CAN-000042`).
 4. **Candidate Staging**: Inserts into MongoDB `candidate_events` with initial state `status: 'pending'`.
 5. **Deterministic Routing**: Potholes trigger `promoteCandidate()` for 10m Haversine deduplication; traffic events trigger `createOrUpdateTrafficIncident()` for 50m / 10-minute multi-bus correlation.
-6. **Active Fleet Update**: Immediately updates `activeFleet` in RAM so the bus appears on the live map.
+6. **Active Fleet Update**: Updates `activeFleet` in RAM so the bus appears on the live map.
 
 
 ---
 
 # 8. Candidate Event Architecture
 
-In RAAHI Central, incoming edge observations are never written directly to authoritative civic tables without staging. Central implements a formal **Candidate Event Architecture** in `models/CandidateEvent.js` and `services/centralEventPromotionService.js`.
+In RAAHI Central, incoming edge observations are staged before authoritative promotion. Central implements a formal **Candidate Event Architecture** in `models/CandidateEvent.js` and `services/centralEventPromotionService.js`.
 
 ### Why Candidate Events Exist
 
 1. **Buffer Between Raw Sensor Data and Civic Records**: Edge detections are sensor observations subject to road vibration, temporary glare, or transient obstacles. Candidate events act as an ingestion staging buffer, preventing civic table pollution.
-2. **Immutable Forensic Audit Trail**: Once created in `candidate_events`, a candidate record is never mutated or deleted. It permanently preserves the raw bounding box, edge confidence, model name, and vehicle timestamp.
+2. **Historical Audit Trail**: Candidate records preserve the raw bounding box, edge confidence, model name, and vehicle timestamp. While records may be updated to link evidence or promotion status, they maintain historical traceability.
 3. **Multi-Observation Fusion Target**: Multiple candidate events from different buses point to the same authoritative pothole ID (`promotedToPotholeId: 'POT-000012'`), enabling complete provenance tracing.
 
 ### `CandidateEvent` Schema Summary (`models/CandidateEvent.js`)
@@ -507,7 +505,7 @@ The `candidate_events` collection stores every received event with:
 
 ### Candidate Promotion Service (`centralEventPromotionService.js`)
 
-- **Class Eligibility**: Only candidates matching supported authoritative classes (`'pothole'`, `'road_damage'`) are eligible for promotion. Non-supported classes remain safely recorded in `candidate_events` for audit.
+- **Class Eligibility**: Only candidates matching supported authoritative classes (`'pothole'`, `'road_damage'`) are eligible for promotion. Non-supported classes remain recorded in `candidate_events` for audit.
 - **Telemetry Preservation**: Edge coordinates and confidence scores are preserved verbatim; Central never averages or recalculates them.
 - **Idempotency**: Multiple promotions of the same candidate return the existing record without duplicate creation.
 - **Lifecycle Transition**: Central updates `candidate.status = 'promoted'` and assigns `candidate.promotedToPotholeId = targetPotholeId`.
@@ -517,20 +515,15 @@ The `candidate_events` collection stores every received event with:
 
 # 9. Pothole Deduplication
 
-Municipal bus fleets travel along fixed, repetitive routes. If a pothole exists on Route 7, every bus passing over that segment will detect it. RAAHI Central implements **Deterministic 10-Meter Spatial Deduplication** in `services/potholeDeduplicationService.js`.
+Municipal bus fleets travel along fixed routes. If a pothole exists on a route, multiple buses passing over that segment will detect it. RAAHI Central implements **Deterministic 10-Meter Spatial Deduplication** in `services/potholeDeduplicationService.js`.
 
 ### The Spherical Haversine Formula
 
-$$\Delta\phi = (	ext{lat}_2 - 	ext{lat}_1) \cdot rac{\pi}{180}, \quad \Delta\lambda = (	ext{lon}_2 - 	ext{lon}_1) \cdot rac{\pi}{180}$$
+$$\Delta\phi = (\text{lat}_2 - \text{lat}_1) \cdot \frac{\pi}{180}, \quad \Delta\lambda = (\text{lon}_2 - \text{lon}_1) \cdot \frac{\pi}{180}$$
 
-$$a = \sin^2\left(rac{\Delta\phi}{2}
-ight) + \cos\left(	ext{lat}_1 \cdot rac{\pi}{180}
-ight) \cdot \cos\left(	ext{lat}_2 \cdot rac{\pi}{180}
-ight) \cdot \sin^2\left(rac{\Delta\lambda}{2}
-ight)$$
+$$a = \sin^2\left(\frac{\Delta\phi}{2}\right) + \cos\left(\text{lat}_1 \cdot \frac{\pi}{180}\right) \cdot \cos\left(\text{lat}_2 \cdot \frac{\pi}{180}\right) \cdot \sin^2\left(\frac{\Delta\lambda}{2}\right)$$
 
-$$c = 2 \cdot 	ext{atan2}\left(\sqrt{a}, \sqrt{1-a}
-ight), \quad d = R \cdot c \quad (R = 6,371,000	ext{ m})$$
+$$c = 2 \cdot \text{atan2}\left(\sqrt{a}, \sqrt{1-a}\right), \quad d = R \cdot c \quad (R = 6,371,000\text{ m})$$
 
 ```javascript
 // raahi-pothole-detection/dashboard/server/services/potholeDeduplicationService.js
@@ -555,20 +548,20 @@ export function haversineDistanceMeters(lat1, lon1, lat2, lon2) {
 
 ### The 10-Meter Threshold & Deduplication Logic
 
-The radius is governed by `POTHOLE_DEDUP_RADIUS_METERS` (defaults to **10.0 meters**), which accommodates standard GPS horizontal error ($2.5–4.5	ext{m}$) while staying narrower than city block intersections.
+The radius is governed by `POTHOLE_DEDUP_RADIUS_METERS` (defaults to **10.0 meters**), which accommodates standard GPS horizontal accuracy while staying narrower than city block intersections.
 
 When candidate coordinates are submitted to `createOrUpdatePothole(candidate)`:
 1. Central queries existing active potholes (`status !== 'ignored'`).
 2. Calculates Haversine distance to each candidate.
-3. **If Distance $\le 10.0	ext{ m}$**: Selects closest pothole, increments `detectionCount`, updates `lastDetectedAt`, appends `busId` to `busesDetectedBy`, updates latest confidence and video URL. Duplicate creation is **suppressed**.
-4. **If Distance $> 10.0	ext{ m}$**: Creates a new canonical record (`POT-XXXXXX`) with `detectionCount: 1`.
+3. **If Distance $\le 10.0\text{ m}$**: Selects closest pothole, increments `detectionCount`, updates `lastDetectedAt`, appends `busId` to `busesDetectedBy`, updates latest confidence and video URL. Duplicate creation is **suppressed**.
+4. **If Distance $> 10.0\text{ m}$**: Creates a new canonical record (`POT-XXXXXX`) with `detectionCount: 1`.
 
 ### Worked Numerical Example
 
 - **Bus A (RAAHI-01)**: Latitude $28.64874^{\circ}$, Longitude $77.50414^{\circ}$. Creates `POT-000001` (`detectionCount: 1`).
-- **Bus B (RAAHI-04)**: Latitude $28.64877^{\circ}$, Longitude $77.50417^{\circ}$ (2.5 hours later).
+- **Bus B (RAAHI-04)**: Latitude $28.64877^{\circ}$, Longitude $77.50417^{\circ}$ (observed later).
 - **Haversine Distance**:
-  $$d pprox 4.21	ext{ meters} \le 10.00	ext{ meters}$$
+  $$d \approx 4.21\text{ meters} \le 10.00\text{ meters}$$
 - **Result**: Fused into `POT-000001` (`detectionCount: 2`, `busesDetectedBy: ["RAAHI-01", "RAAHI-04"]`).
 
 > [!NOTE]
@@ -579,15 +572,15 @@ When candidate coordinates are submitted to `createOrUpdatePothole(candidate)`:
 
 # 10. Multi-Bus Traffic Correlation
 
-While a pothole is a static geographic defect, traffic congestion is an ephemeral, fluid condition. A single bus slowing down or stopping might merely indicate passenger boarding or a traffic signal. However, when multiple independent transit buses traversing the same road segment report severe congestion simultaneously, the condition represents a verified municipal traffic incident.
+Unlike static potholes, traffic congestion is transient. A single slowing bus may merely indicate passenger boarding. When multiple independent transit buses traversing the same road segment report severe congestion concurrently, it confirms a municipal traffic incident.
 
-RAAHI Central implements **Deterministic Multi-Bus Traffic Correlation** in `models/TrafficIncident.js` and `services/trafficIncidentService.js`.
+Central implements **Deterministic Multi-Bus Traffic Correlation** in `models/TrafficIncident.js` and `services/trafficIncidentService.js`.
 
 ### Correlation Thresholds
 
 Traffic correlation is governed by two deterministic boundary windows:
-1. **Spatial Radius Threshold**: $50.0	ext{ meters}$ (`DEFAULT_TRAFFIC_SPATIAL_RADIUS_METERS`). Accounts for the physical length of multi-vehicle queues.
-2. **Temporal Window**: $10	ext{ minutes}$ ($600,000	ext{ ms}$) (`DEFAULT_TRAFFIC_TEMPORAL_WINDOW_MS`). Restricts correlation to active, concurrent congestion conditions.
+1. **Spatial Radius Threshold**: $50.0\text{ meters}$ (`DEFAULT_TRAFFIC_SPATIAL_RADIUS_METERS`). Accounts for the physical length of multi-vehicle queues.
+2. **Temporal Window**: $10\text{ minutes}$ ($600,000\text{ ms}$) (`DEFAULT_TRAFFIC_TEMPORAL_WINDOW_MS`). Restricts correlation to active, concurrent congestion conditions.
 
 ### Correlation Algorithm Flow
 
@@ -684,11 +677,11 @@ Central enforces strict schema validation and defensive sanitization in `service
 | `eventType` | Must be a non-empty string | `"Missing or invalid 'eventType'. Must be a non-empty string."` |
 | `busId` | Must be a non-empty string | `"Missing or invalid 'busId'. Must be a non-empty string."` |
 | `timestamp` | Must parse into a valid Date | `"Invalid 'timestamp' value. Must be a valid ISO 8601 string."` |
-| `latitude` | Finite number, $-90.0 \le 	ext{lat} \le 90.0$ | `"Invalid GPS latitude. Must be a finite number between -90 and 90."` |
-| `longitude` | Finite number, $-180.0 \le 	ext{lng} \le 180.0$ | `"Invalid GPS longitude. Must be a finite number between -180 and 180."` |
+| `latitude` | Finite number, $-90.0 \le \text{lat} \le 90.0$ | `"Invalid GPS latitude. Must be a finite number between -90 and 90."` |
+| `longitude` | Finite number, $-180.0 \le \text{lng} \le 180.0$ | `"Invalid GPS longitude. Must be a finite number between -180 and 180."` |
 | `accuracy` | If provided, finite number $\ge 0.0$ | `"Invalid GPS accuracy. Must be a non-negative finite number."` |
 | `edgeModel` | Non-empty string (e.g. `'YOLO11n'`) | `"Missing or invalid 'edge model'. Must specify edge detector."` |
-| `confidence` | Finite number, $0.0 \le 	ext{conf} \le 1.0$ | `"Invalid 'confidence' score. Must be between 0.0 and 1.0."` |
+| `confidence` | Finite number, $0.0 \le \text{conf} \le 1.0$ | `"Invalid 'confidence' score. Must be between 0.0 and 1.0."` |
 | `class` | Non-empty string (e.g. `'pothole'`) | `"Missing or invalid detection 'class'. Must be a non-empty string."` |
 | `boundingBox` | Object: `{x1, y1, x2, y2}` or `{x, y, w, h}` | `"Invalid 'boundingBox' format."` |
 | `evidenceReference` | If provided, must be a string | `"Invalid 'evidence reference'. When provided, must be a string."` |
@@ -705,18 +698,22 @@ Central normalizes coordinate formats across different edge revisions:
 
 # 12. GPS and Timestamp Correlation
 
-Spatial-temporal accuracy is the backbone of RAAHI. Central's deduplication and multi-bus correlation algorithms rely entirely on high-fidelity geographic positioning and accurate temporal synchronization.
+Spatial-temporal accuracy is fundamental to RAAHI. Central's deduplication and multi-bus correlation algorithms rely on geographic coordinates and temporal synchronization.
 
 ### Why Edge Associates GPS at Detection Instant ($t_0$)
 
-Vehicular edge sensing experiences variable network latency; an event package may wait in SQLite for 45 seconds before cellular transmission succeeds.
+Vehicular edge sensing experiences variable network latency; an event package may wait in the SQLite queue for tens of seconds before cellular transmission succeeds.
 
-If Central attempted to timestamp the event upon HTTP receipt ($t_{	ext{arrival}}$), the event would be attributed to the wrong road segment—a bus traveling at $40	ext{ km/h}$ covers over $440	ext{ meters}$ in 40 seconds.
+If Central attempted to timestamp the event upon HTTP receipt ($t_{\text{arrival}}$), the event would be attributed to the wrong road segment—a bus traveling at $40\text{ km/h}$ covers over $440\text{ meters}$ in 40 seconds.
 
 Therefore, **RAAHI-Edge anchors GPS coordinates and timestamps locally at instant $t_0$**. When the package arrives at Central:
-- `timestamp` represents the exact UTC instant the physical road defect passed under the camera lens.
+- `timestamp` represents the UTC instant the physical road defect was observed by the camera.
 - `createdAt` represents the Central server ingestion timestamp.
-- Central executes all spatial-temporal correlation against the authoritative Edge `timestamp`, completely insulating the system from cellular transmission delays.
+- Central executes all spatial-temporal correlation against the Edge `timestamp`.
+
+### GPS Precision Disclosures
+
+Edge GPS updates are polled at approximately 1 Hz from device GNSS chips. Central validates coordinate boundaries and stores timestamp strings formatted with millisecond resolution, but Central does not alter or increase raw GNSS receiver precision.
 
 ### Temporal Window Matching
 
@@ -732,7 +729,7 @@ const activeIncidents = await TrafficIncident.find({
   'location.longitude': { $exists: true, $ne: null }
 });
 ```
-This guarantees that a morning rush hour slowdown at 08:30 AM is never mistakenly correlated with an evening congestion incident at 06:00 PM on the same street segment.
+This guarantees that morning slowdowns are never mistakenly correlated with evening congestion incidents on the same street segment.
 
 
 ---
@@ -747,7 +744,7 @@ GET /api/fleet/buses
 
 ### In-Memory Fleet State Architecture
 
-Connected edge buses continuously stream GPS breadcrumbs and event packages to Central. To provide sub-millisecond query performance for the GIS dashboard without placing continuous write pressure on MongoDB, Central maintains an in-memory registry:
+Connected edge buses stream GPS breadcrumbs and event packages to Central. To provide low-latency queries for the GIS dashboard without placing continuous write pressure on MongoDB, Central maintains an in-memory registry:
 
 ```javascript
 // raahi-pothole-detection/dashboard/server/index.js
@@ -763,7 +760,7 @@ Whenever an event package arrives at `POST /api/central/events` or a telemetry p
 - `status`: Dynamic liveness status (`'online'` or `'offline'`)
 - `camera`: Camera pipeline status (`true`)
 - `lastSeen`: Human-readable indicator (`'Now'`)
-- `updatedAt`: Epoch millisecond timestamp of last communication
+- `updatedAt`: Epoch timestamp of last communication
 
 ### Liveness Timeout & Offline Transition
 
@@ -778,7 +775,7 @@ for (const [bId, busInfo] of activeFleet.entries()) {
   });
 }
 ```
-If a bus loses connectivity or finishes its shift, Central automatically transitions its status to `offline` after 60 seconds of silence.
+If a bus loses connectivity or finishes its shift, Central automatically transitions its status to `offline` after 60 seconds of silence. Because this registry is held in server RAM, it resets if the server process restarts.
 
 ### Response Schema
 
@@ -880,7 +877,7 @@ The Central React dashboard polls this endpoint every 6 seconds, rendering pulsi
 
 # 15. Evidence Upload Pipeline
 
-When an edge device detects a high-confidence road hazard or severe traffic condition, it generates a 15-second MP4 evidence clip ($t_0 \pm 7.5	ext{s}$). This clip is transmitted via:
+When an edge device detects a high-confidence road hazard or severe traffic condition, it generates a 15-second MP4 evidence clip consisting of **5.0 seconds pre-event + 10.0 seconds post-event** ($t_0 - 5.0\text{s}$ to $t_0 + 10.0\text{s}$; 150 pre-frames + 300 post-frames at 30 FPS = 450 frames total). This clip is transmitted via:
 
 ```http
 POST /api/central/evidence/upload
@@ -895,7 +892,7 @@ X-File-Name: EVT-20260919-RAAHI01-00042_evidence.mp4
 RAAHI-Edge (Vehicle) -> 15s MP4 Clip -> [POST /api/central/evidence/upload]
     -> Validate binary stream (up to 100MB) -> Stage to videos/evidence/<fileName>
     -> Google Drive Authenticated?
-          ├─► (Yes) -> Upload to 'RAAHI-Pothole-Evidence' -> Retrieve driveUrl
+          ├─► (Yes) -> Synchronously upload to 'RAAHI-Pothole-Evidence' -> Retrieve driveUrl
           └─► (No)  -> Retain in videos/evidence/ -> Local URL /evidence/<fileName>
     -> Update CandidateEvent, Pothole, and TrafficIncident records matching eventId
     -> Return HTTP 200 OK (localUrl, driveUrl, driveFileId, sizeBytes)
@@ -951,25 +948,28 @@ app.post('/api/central/evidence/upload', express.raw({ limit: '100mb', type: ['v
 });
 ```
 
+The Google Drive upload is executed synchronously with `await` within the HTTP request handler. If Drive authentication is unavailable or the upload fails, the clip remains safely staged locally in `videos/evidence/` and served via `/evidence/:fileName`.
+
 
 ---
 
 # 16. Google Drive Integration
 
-Digital video evidence requires durable cloud hosting. RAAHI Central integrates with Google Drive API v3 via OAuth 2.0 in `services/googleDriveService.js`.
+Digital video evidence is synchronized to Google Drive via Google Drive API v3 (OAuth 2.0) in `services/googleDriveService.js`.
 
 ### Why Google Drive is Used
 
-- **Cost-Free Storage**: 15 GB free storage with affordable scaling ($1.99/month for 100 GB), ideal for municipal prototypes and trials.
-- **Adaptive Bitrate Streaming**: Built-in video preview player (`webViewLink`) allows engineers to view 15s clips in browser without dedicated transcoding clusters.
-- **Durable Access Control**: Supports public link sharing (for demo evaluation) and private authenticated downloads (for production).
+- **Cost-Free Storage**: 15 GB free storage with affordable scaling, ideal for prototypes and trials.
+- **Adaptive Bitrate Streaming**: Built-in video preview player (`webViewLink`) allows users to view 15s clips in browser without dedicated transcoding clusters.
+- **Access Control**: Supports public link sharing (for demo evaluation) and private authenticated downloads (for production).
 
 ### OAuth 2.0 Architecture
 
-Central uses the official Google APIs client (`googleapis` v180.0.0):
+Central uses the Google APIs client (`googleapis` v180.0.0):
 1. Loads `GOOGLE_DRIVE_CLIENT_ID` and `GOOGLE_DRIVE_CLIENT_SECRET` from `.env`.
 2. Refreshes tokens automatically from `GOOGLE_DRIVE_REFRESH_TOKEN` or `config/drive_token.json`.
 3. Auto-provisions root folder `RAAHI-Pothole-Evidence` if not found.
+4. Executes request-driven upload inside the route handler when evidence is received.
 
 ```javascript
 const sharePublic = (process.env.GOOGLE_DRIVE_SHARE_PUBLIC === 'true') || makePublic;
@@ -982,7 +982,7 @@ if (sharePublic) {
 ```
 
 > [!WARNING]
-> **Production Privacy Note**: In the prototype, `makePublic` is set to `true` to allow judges and reviewers to view evidence clips without Google login. For **production municipal deployments**, public sharing must be disabled (`GOOGLE_DRIVE_SHARE_PUBLIC=false`), with evidence served securely through authenticated backend proxy streams (`downloadFileBuffer()`).
+> **Production Privacy Note**: In the prototype, `makePublic` is set to `true` to allow judges and reviewers to view evidence clips without Google login. For **production municipal deployments**, public sharing should be disabled (`GOOGLE_DRIVE_SHARE_PUBLIC=false`), with evidence served securely through authenticated backend proxy streams (`downloadFileBuffer()`).
 
 
 ---
@@ -992,28 +992,28 @@ if (sharePublic) {
 RAAHI Central uses MongoDB via Mongoose 9.10.0 with three dedicated collections: `candidate_events`, `potholes`, and `trafficincidents`.
 
 ### Collection 1: `candidate_events` (`models/CandidateEvent.js`)
-Stages all raw incoming edge event packages as an immutable audit log.
+Stages incoming edge event packages as a historical audit trail.
 
 | Field Name | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
 | `_id` | `ObjectId` | Primary Key | MongoDB primary key |
-| `candidateId` | `String` | Required, Unique, Indexed | Sequential ID assigned by Central (`CAN-XXXXXX`) |
-| `edgeEventId` | `String` | Required, Unique, Indexed | Canonical UUID from RAAHI-Edge |
-| `eventType` | `String` | Required, Default `'pothole'` | Classification category (`pothole`, `congestion`) |
-| `busId` | `String` | Required, Indexed | Originating vehicle identifier (`RAAHI-01`) |
-| `timestamp` | `Date` | Required, Indexed | Observation UTC timestamp ($t_0$) from edge GPS |
+| `candidateId` | `String` | Required, Unique, Indexed | Sequential ID (`CAN-XXXXXX`) |
+| `edgeEventId` | `String` | Required, Unique, Indexed | Canonical UUID from Edge |
+| `eventType` | `String` | Required, Default `'pothole'` | Classification (`pothole`, `congestion`) |
+| `busId` | `String` | Required, Indexed | Vehicle ID (`RAAHI-01`) |
+| `timestamp` | `Date` | Required, Indexed | Observation UTC timestamp ($t_0$) |
 | `location.latitude` | `Number` | Required, Range `[-90, 90]` | Decimal latitude in WGS 84 |
 | `location.longitude` | `Number` | Required, Range `[-180, 180]`| Decimal longitude in WGS 84 |
-| `location.accuracy` | `Number` | Default `null` | Horizontal GPS accuracy in meters |
-| `edgeModel` | `String` | Required, Default `'YOLO11n'` | Deep learning model (`'YOLO11n'`) |
-| `confidence` | `Number` | Required, Range `[0.0, 1.0]` | Edge model confidence score |
-| `class` | `String` | Required, Default `'pothole'` | Detection class label |
-| `boundingBox` | `Object` | `{ x1, y1, x2, y2 }` | Bounding box coordinates within frame |
-| `trafficTelemetry` | `Mixed` | Default `null` | Telemetry payload (activeVehicles, occupancy, etc.) |
-| `evidenceReference` | `String` | Default `''` | Associated MP4 file name |
-| `videoUrl` | `String` | Default `''` | Google Drive link or local playback URL |
-| `driveFileId` | `String` | Default `null` | Unique Google Drive file ID |
-| `status` | `String` | Enum `['pending', 'promoted']`| Promotion lifecycle state |
+| `location.accuracy` | `Number` | Default `null` | Horizontal accuracy in meters |
+| `edgeModel` | `String` | Required, Default `'YOLO11n'` | Edge detector model |
+| `confidence` | `Number` | Required, Range `[0.0, 1.0]` | Detection confidence score |
+| `class` | `String` | Required, Default `'pothole'` | Class label |
+| `boundingBox` | `Object` | `{ x1, y1, x2, y2 }` | Bounding box coordinates |
+| `trafficTelemetry` | `Mixed` | Default `null` | Telemetry payload (activeVehicles, occupancy) |
+| `evidenceReference` | `String` | Default `''` | MP4 evidence file name |
+| `videoUrl` | `String` | Default `''` | Google Drive or local video URL |
+| `driveFileId` | `String` | Default `null` | Google Drive file ID |
+| `status` | `String` | Enum `['pending', 'promoted']`| Promotion state |
 | `promotedToPotholeId` | `String` | Default `null`, Indexed | Target `POT-XXXXXX` if promoted |
 
 **Indexes**: `{ candidateId: 1 }` (Unique), `{ edgeEventId: 1 }` (Unique), `{ status: 1, createdAt: -1 }`, `{ busId: 1, createdAt: -1 }`, `{ 'location.latitude': 1, 'location.longitude': 1 }`.
@@ -1026,22 +1026,22 @@ Maintains the authoritative civic registry of physical road surface hazards.
 | Field Name | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
 | `_id` | `ObjectId` | Primary Key | MongoDB primary key |
-| `potholeId` | `String` | Required, Unique, Indexed | Canonical civic incident ID (`POT-XXXXXX`) |
+| `potholeId` | `String` | Required, Unique, Indexed | Canonical incident ID (`POT-XXXXXX`) |
 | `location.latitude` | `Number` | Required, Range `[-90, 90]` | Centroid decimal latitude in WGS 84 |
 | `location.longitude` | `Number` | Required, Range `[-180, 180]`| Centroid decimal longitude in WGS 84 |
-| `location.accuracy` | `Number` | Default `null` | Horizontal GPS accuracy in meters |
+| `location.accuracy` | `Number` | Default `null` | Horizontal accuracy in meters |
 | `address` | `String` | Default `''` | Reverse geocoded street address |
-| `firstDetectedAt` | `Date` | Default `Date.now` | Earliest recorded observation timestamp |
-| `lastDetectedAt` | `Date` | Default `Date.now` | Most recent recorded observation timestamp |
-| `detectionCount` | `Number` | Default `1`, Min `1` | Total fused observations across all passes |
+| `firstDetectedAt` | `Date` | Default `Date.now` | First observation timestamp |
+| `lastDetectedAt` | `Date` | Default `Date.now` | Most recent observation timestamp |
+| `detectionCount` | `Number` | Default `1`, Min `1` | Total fused observations across passes |
 | `busesDetectedBy` | `[String]` | Default `[]` | Array of distinct bus IDs observing defect |
 | `confidence` | `Number` | Range `[0.0, 1.0]` | Latest detection confidence score |
-| `videoUrl` | `String` | Default `''` | Authoritative Google Drive video link |
+| `videoUrl` | `String` | Default `''` | Google Drive video link |
 | `driveFileId` | `String` | Default `null` | Google Drive unique file ID |
-| `status` | `String` | Enum `['open', 'investigating', 'repaired', 'ignored']` | Municipal maintenance status |
+| `status` | `String` | Enum `['open', 'investigating', 'repaired', 'ignored']` | Maintenance workflow status |
 | `edgeEventId` | `String` | Unique (Partial Index) | First triggering edge event UUID |
-| `sourceCandidateId` | `String` | Default `null`, Indexed | First triggering candidate ID (`CAN-XXXXXX`) |
-| `boundingBox` | `Object` | `{ x1, y1, x2, y2 }` | Pixel bounding box coordinates |
+| `sourceCandidateId` | `String` | Default `null`, Indexed | First triggering candidate ID |
+| `boundingBox` | `Object` | `{ x1, y1, x2, y2 }` | Bounding box coordinates |
 | `evidenceReference` | `String` | Default `''` | MP4 evidence file name |
 
 **Indexes**: `{ potholeId: 1 }` (Unique), `{ status: 1 }`, `{ 'location.latitude': 1, 'location.longitude': 1 }`, `{ edgeEventId: 1 }` (Unique partial).
@@ -1066,8 +1066,8 @@ Stores multi-bus correlated traffic congestion incidents.
 | `busesReportedBy` | `[String]` | Default `[]` | Distinct buses reporting this incident |
 | `metrics.activeVehicles`| `Number`| Default `0` | Active vehicles in view |
 | `metrics.occupancyRatio`| `Number`| Default `0.0` | Spatial occupancy ratio ($0.0$ to $1.0$) |
-| `metrics.flowVpm` | `Number` | Default `0.0` | Vehicle flow rate (Vehicles/Minute) |
-| `status` | `String` | Enum `['active', 'cleared', 'investigating']` | Operational status of incident |
+| `metrics.flowVpm` | `Number` | Default `0.0` | Flow rate (Vehicles/Minute) |
+| `status` | `String` | Enum `['active', 'cleared', 'investigating']` | Operational status |
 | `edgeEventIds` | `[String]` | Default `[]` | Correlated edge event UUIDs |
 | `videoUrl` | `String` | Default `''` | Video evidence URL |
 
@@ -1078,7 +1078,7 @@ Stores multi-bus correlated traffic congestion incidents.
 
 # 18. Central Dashboard
 
-The RAAHI Central Dashboard is an operations-grade Single Page Application (SPA) built with **React 18.3.1**, **Vite 6.0.3**, and **Leaflet 1.9.4**. Designed for municipal command centers, it provides real-time geospatial visualization, incident triage, candidate inspection, and fleet telemetry monitoring.
+The RAAHI Central Dashboard is a Single Page Application (SPA) built with **React 18.3.1**, **Vite 6.0.3**, and **Leaflet 1.9.4**. Designed for municipal command centers, it provides near-real-time geospatial visualization, incident triage, candidate inspection, and fleet telemetry monitoring.
 
 ### Component Structure & Architecture
 
@@ -1109,9 +1109,9 @@ App.jsx (Master Container, Periodic Polling Loop & State Management)
     └── SystemHealth.jsx (Node Server, MongoDB Readiness, Google Drive OAuth Status)
 ```
 
-### Real-Time State Management & Polling Loop
+### State Management & Periodic Polling Loop
 
-The dashboard implements an active polling loop in `App.jsx`. Every 6 seconds (when `live` mode is toggled on), Central fetches fresh intelligence across all domains in parallel:
+The dashboard implements an active polling loop in `App.jsx`. Every 6 seconds (when `live` mode is active), Central fetches fresh intelligence across all domains in parallel:
 
 ```javascript
 // raahi-pothole-detection/dashboard/src/App.jsx
@@ -1130,10 +1130,10 @@ useEffect(() => {
 
 ### Real Data vs. Mock Fallback Disclosures
 
-- **Pothole Incidents**: Sourced **100% live** from MongoDB via `GET /api/potholes`.
-- **Candidate Events**: Sourced **100% live** from MongoDB via `GET /api/central/candidates`.
-- **Traffic Incidents**: Sourced **100% live** from MongoDB via `GET /api/traffic/incidents`.
-- **Connected Buses**: Sourced **100% live** from Central in-memory registry via `GET /api/fleet/buses`.
+- **Pothole Incidents**: Sourced live from MongoDB via `GET /api/potholes`.
+- **Candidate Events**: Sourced live from MongoDB via `GET /api/central/candidates`.
+- **Traffic Incidents**: Sourced live from MongoDB via `GET /api/traffic/incidents`.
+- **Connected Buses**: Sourced live from Central in-memory registry via `GET /api/fleet/buses`.
 - **Mock Fallback (`data/mockData.js`)**: Static demo bus markers (`initialBuses`) exist purely as a fallback when zero live buses are connected, ensuring dashboard evaluation is possible offline. As soon as live buses connect, Central overrides demo markers with true live vehicle positions.
 
 
@@ -1141,592 +1141,765 @@ useEffect(() => {
 
 # 19. GIS / Map Intelligence
 
-Geographic Information System (GIS) cartography is implemented in `components/MapView.jsx` using **Leaflet 1.9.4** and high-contrast dark cartographic tiles from CartoDB (`voyager` tileset).
+RAAHI Central geospatial visualization is built on React-Leaflet, wrapping Leaflet 1.9 with an OpenStreetMap tile layer. It translates MongoDB coordinates and fleet telemetry into an interactive municipal dashboard.
 
-### Layer Visualizations
+```
++-------------------------------------------------------------------------+
+|                      LEAFLET GIS CARTOGRAPHY ENGINE                     |
+|                                                                         |
+|  [Layer: OpenStreetMap CartoDB Tiles]                                   |
+|    |                                                                    |
+|    +--> Pothole Markers (Custom HTML DivIcons)                          |
+|    |      * Critical/High Severity: Red Pulse Marker                    |
+|    |      * Medium Severity: Yellow Marker                              |
+|    |      * Low Severity: Light Amber Marker                            |
+|    |      * In-Progress / Verified: Blue Marker                         |
+|    |      * Resolved: Green Check Marker                                |
+|    |                                                                    |
+|    +--> Fleet Vehicle Markers                                           |
+|    |      * Active Bus: Blue Icon with Bus ID label                     |
+|    |      * Tooltip: Telemetry (speed, heading, route, last ping)       |
+|    |                                                                    |
+|    +--> Traffic Congestion Overlays                                     |
+|           * Spatial clusters (50m radius circles)                       |
+|           * Correlated multi-bus incident highlights                    |
++-------------------------------------------------------------------------+
+```
 
-Central transforms raw database coordinates into layered geographic intelligence:
+### Custom Marker Rendering & Styling
 
-1. **Authoritative Potholes Layer**:
-   - Rendered using custom SVG map pins color-coded by municipal status:
-     - **Open (`#ef4444`, Crimson)**: Active, uninvestigated road hazard.
-     - **Investigating (`#f59e0b`, Amber)**: Under municipal review or scheduled for repair.
-     - **Repaired (`#10b981`, Emerald)**: Successfully patched by municipal road works.
-     - **Ignored (`#64748b`, Slate)**: Deemed minor surface texture anomaly.
-   - Popups display: Pothole ID (`POT-XXXXXX`), observation count (`detectionCount`), reporting buses (`busesDetectedBy`), edge detector confidence, Google Drive video link, and a quick-action button to open the Incident Details Drawer.
-2. **Authoritative Traffic Incidents Layer**:
-   - Rendered using dynamic pulsing beacon icons:
-     - **Critical (`#dc2626`, Pulsing Red)**: Multi-bus confirmed congestion.
-     - **High (`#ea580c`, Pulsing Orange)**: High ROI vehicle occupancy ($> 60\%$).
-     - **Medium (`#d97706`, Amber)**: Minor localized slowdown.
-   - Popups display: Active vehicles, ROI vehicle density, flow rate (VPM), and reporting buses.
-3. **Connected Transit Fleet Layer**:
-   - Directional bus icons showing vehicle ID (`RAAHI-01`), route, speed (km/h), and status.
+Central renders custom HTML `DivIcon` elements that display contextual status directly on the map:
 
-### Marker Recycling
+1. **Severity-Driven Visual Hierarchy**:
+   - **Critical / High Severity**: Rendered in crimson red (`#ef4444`) with a CSS pulse animation for immediate operator attention.
+   - **Medium Severity**: Rendered in amber yellow (`#f59e0b`) indicating moderate pavement disruption.
+   - **Low Severity**: Rendered in muted yellow (`#fbbf24`) for early surface degradation.
+   - **Resolved Defect**: Rendered in emerald green (`#10b981`) confirming municipal remediation.
 
-To maintain 60 FPS rendering when hundreds of pins are loaded, `MapView.jsx` maintains an internal layer reference array (`layersRef = useRef([])`). On each polling cycle, old markers are cleared and updated without destroying the Leaflet map instance, preventing flashing and memory leaks.
+2. **Fleet Vehicle Visualizer**:
+   - Bus markers represent active transit vehicles reporting telemetry to `POST /api/gps`.
+   - Tooltips display vehicle telemetry attributes: Bus ID (e.g., `RAAHI-01`), assigned route, instantaneous speed in km/h, and status.
 
+3. **Defect Detail Popup**:
+   Clicking any defect marker opens an interactive Leaflet popup containing:
+   - Unique Pothole ID (e.g., `POT-000001`).
+   - Latitude and Longitude formatted to 6 decimal places.
+   - Reverse-geocoded landmark or road name (if available).
+   - Detection confidence percentage and estimated depth/dimensions.
+   - Direct link to the 15-second MP4 evidence clip hosted on Google Drive or Central local storage.
+   - Quick-action buttons to change status (e.g., "Assign Repair", "Mark Resolved").
+
+### Periodic Polling Architecture for Near-Real-Time Updates
+
+To maintain synchronization with the backend without requiring complex WebSocket infrastructure in the current prototype, the GIS interface utilizes client-side periodic polling:
+- **Pothole and Incident Telemetry**: Polled every 6 seconds via `GET /api/potholes` and `GET /api/traffic/incidents`.
+- **Bus Fleet Telemetry**: Polled every 2 to 3 seconds via `GET /api/fleet/buses` and `GET /api/gps`.
+
+When new events are detected or deduplicated on Central, the map state updates incrementally during the next polling tick, repositioning bus icons and rendering new defect markers dynamically.
 
 ---
 
 # 20. Central API Reference
 
-Central exposes a RESTful API on port 5001 with standard JSON error models and HTTP status codes.
-
-### Canonical Endpoints Summary
-
-| Method | Endpoint | Purpose | Category |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/central/events` | Canonical Edge Event Package ingestion | Ingestion |
-| `POST` | `/api/central/evidence/upload` | Canonical 15s MP4 video evidence upload | Ingestion |
-| `GET` | `/api/central/candidates` | List candidate events with filters | Query |
-| `GET` | `/api/central/candidates/:candidateId` | Retrieve single candidate event metadata | Query |
-| `POST` | `/api/central/candidates/:candidateId/promote` | Promote candidate to authoritative Pothole | Mutation |
-| `GET` | `/api/fleet/buses` | Connected active transit fleet registry | Telemetry |
-| `GET` | `/api/traffic/incidents` | Correlated active traffic incidents | Query |
-| `GET` | `/api/potholes` | Authoritative municipal pothole records | Query |
-| `GET` | `/api/potholes/stats` | Aggregated pothole stats (total, open, fixed) | Analytics |
-| `GET` | `/api/potholes/:potholeId` | Retrieve single authoritative pothole | Query |
-| `PATCH`| `/api/potholes/:potholeId/status` | Mutate incident status (open, repaired, etc.)| Management |
-| `GET` | `/api/status` | Central server health and benchmark metrics | System |
-| `POST` | `/api/gps` | Ingest vehicle GPS telemetry ping | Telemetry |
-| `GET` | `/api/gps` | Query latest vehicle GPS position | Telemetry |
+RAAHI Central exposes a RESTful JSON API implemented in Express 4.21 on port `5001`, partitioned into event ingestion, evidence handling, candidate review, fleet tracking, and municipal queries.
 
 ---
 
-### Detailed Endpoint Specifications
+### Core Edge Ingestion Endpoints
 
-#### 1. `POST /api/central/events`
-Normalizes, deduplicates, and stages into `candidate_events`, auto-promoting to `potholes` or `trafficincidents`.
+#### 1. Ingest Candidate Event
+`POST /api/central/events`
 
+Ingests a structured road hazard or traffic congestion event from an edge unit.
+
+- **Headers**: `Content-Type: application/json`
+- **Request Body**:
 ```json
-// Request Body
 {
-  "eventId": "EVT-20260919-RAAHI01-00042",
-  "eventType": "pothole",
+  "edgeEventId": "evt_edge_1740001122_001",
   "busId": "RAAHI-01",
-  "timestamp": "2026-09-19T08:34:12.450Z",
-  "location": { "latitude": 28.648740, "longitude": 77.504140, "accuracy": 3.2 },
-  "edgeModel": "YOLO11n",
-  "confidence": 0.89,
-  "class": "pothole",
-  "boundingBox": { "x1": 340, "y1": 520, "x2": 490, "y2": 660 },
-  "evidenceReference": "EVT-20260919-RAAHI01-00042_evidence.mp4"
+  "timestamp": "2026-09-19T06:30:15.120Z",
+  "eventType": "POTHOLE",
+  "location": {
+    "latitude": 28.648740,
+    "longitude": 77.504140,
+    "accuracy": 3.2
+  },
+  "metadata": {
+    "confidence": 0.88,
+    "severity": "HIGH",
+    "speed": 34.5,
+    "weather": "CLEAR"
+  }
 }
 ```
+- **Responses**:
+  - `201 Created`: Event accepted and staged in `candidate_events`. If deduplication succeeds, returns `candidateId` and deduplication disposition (`NEW_INCIDENT` or `DEDUPLICATED_EXISTING`).
+  - `400 Bad Request`: Validation failure (missing required fields, coordinates out of range, invalid event type).
+  - `409 Conflict`: Duplicate `edgeEventId` already exists (idempotency enforcement).
 
+---
+
+#### 2. Upload Digital Video Evidence Clip
+`POST /api/central/evidence/upload`
+
+Receives the 15-second MP4 video clip corresponding to a staged candidate event.
+
+- **Headers**:
+  - `Content-Type: video/mp4` or `application/octet-stream`
+  - `x-event-id`: `evt_edge_1740001122_001` (staged event ID)
+  - `x-file-name`: `evt_edge_1740001122_001_evidence.mp4`
+- **Request Body**: Raw binary MP4 stream (up to 100 MB).
+- **Processing**:
+  - Writes binary file to `videos/evidence/{fileName}`.
+  - If Google Drive is authenticated, calls `googleDriveService.uploadEvidenceClip()` synchronously.
+  - Updates `CandidateEvent` and `Pothole` records in MongoDB with `evidenceReference`, `videoUrl`, and `driveWebViewLink`.
+- **Responses**:
+  - `200 OK`: Evidence successfully staged locally and synchronized to Google Drive.
+  - `400 Bad Request`: Missing video payload in request body.
+  - `500 Internal Server Error`: Disk write error or unhandled storage exception.
+
+---
+
+### Candidate Event & Promotion Endpoints
+
+#### 3. List Candidate Events
+`GET /api/central/candidates`
+
+Queries staged candidate events for municipal review.
+
+- **Query Parameters**:
+  - `status`: Filter by candidate status (`PENDING`, `PROMOTED`, `REJECTED`).
+  - `type`: Filter by event type (`POTHOLE`, `TRAFFIC_CONGESTION`).
+  - `limit`: Number of records to return (default: 50).
+- **Responses**:
+  - `200 OK`: JSON array of candidate event objects.
+
+#### 4. Promote Candidate Event
+`POST /api/central/candidates/:candidateId/promote`
+
+Promotes a staged candidate event to the authoritative `potholes` or `trafficincidents` collection.
+
+- **Path Parameter**: `candidateId` (MongoDB ObjectId or custom candidate ID).
+- **Responses**:
+  - `200 OK`: Candidate promoted successfully; returns updated authoritative entity ID.
+  - `404 Not Found`: Candidate ID does not exist.
+
+---
+
+### Telemetry and Incident Endpoints
+
+#### 5. System Health & Connectivity
+`GET /api/status`
+
+Returns runtime status of the Central server, database, and third-party integrations.
+
+- **Response `200 OK`**:
 ```json
-// Response (HTTP 201 Created)
 {
-  "success": true,
-  "created": true,
-  "duplicate": false,
-  "message": "Candidate event ingested and processed deterministically.",
-  "candidateId": "CAN-000042",
-  "edgeEventId": "EVT-20260919-RAAHI01-00042",
-  "status": "promoted",
-  "promotion": { "promoted": true, "potholeId": "POT-000014", "action": "created" }
+  "status": "ONLINE",
+  "uptimeSeconds": 14205,
+  "database": {
+    "connected": true,
+    "host": "127.0.0.1",
+    "database": "raahi_central"
+  },
+  "googleDrive": {
+    "authenticated": true,
+    "folder": "RAAHI-Evidence-Storage"
+  },
+  "fleet": {
+    "activeBuses": 3,
+    "lastTelemetryPing": "2026-09-19T06:35:00.000Z"
+  }
 }
 ```
 
-#### 2. `POST /api/central/evidence/upload`
-Binary upload for 15-second H.264 evidence video clips. Stages locally and uploads to Google Drive.
-- **Headers**: `Content-Type: video/mp4`, `X-Event-ID: EVT-01-00042`, `X-File-Name: EVT-01-00042_evidence.mp4`
-- **Body**: Raw binary octet-stream (up to 100 MB).
+#### 6. Fleet Telemetry Ingestion & Query
+- `POST /api/gps`: Ingests vehicle GPS telemetry ping (`busId`, `latitude`, `longitude`, `speed`, `heading`, `timestamp`).
+- `GET /api/fleet/buses`: Returns active fleet list with latest known GPS coordinates, speed, and status.
 
-```json
-// Response (HTTP 200 OK)
-{
-  "success": true,
-  "eventId": "EVT-01-00042",
-  "fileName": "EVT-01-00042_evidence.mp4",
-  "sizeBytes": 3845120,
-  "localUrl": "/evidence/EVT-01-00042_evidence.mp4",
-  "driveUrl": "https://drive.google.com/file/d/1BxyZ.../view",
-  "driveFileId": "1BxyZ..."
-}
-```
+#### 7. Authoritative Potholes & Traffic Incidents
+- `GET /api/potholes`: Returns list of authoritative potholes with filtering by status and bounding box.
+- `GET /api/potholes/stats`: Returns aggregated counts (total, pending, in-progress, resolved, severity distribution).
+- `GET /api/traffic/incidents`: Returns active multi-bus correlated traffic congestion incidents.
 
-#### 3. `PATCH /api/potholes/:potholeId/status`
-Updates municipal workflow status (`open`, `investigating`, `repaired`, `ignored`).
+---
 
-```json
-// Request: { "status": "repaired" }
-// Response (HTTP 200 OK)
-{
-  "success": true,
-  "potholeId": "POT-000014",
-  "status": "repaired",
-  "pothole": { "potholeId": "POT-000014", "status": "repaired", "detectionCount": 3 }
-}
-```
+### Google Drive OAuth Endpoints
 
+- `GET /api/dev/auth/google/status`: Returns current OAuth token status.
+- `GET /api/dev/auth/google/login`: Generates and redirects to Google OAuth 2.0 consent URL.
+- `GET /api/dev/auth/google/callback`: Receives authorization code from Google, exchanges for tokens, and persists to `config/drive_token.json`.
 
 ---
 
 # 21. End-to-End Data Flows
 
-### Walkthrough A: Pothole Detection & Promotion Pipeline
-1. **Physical Detection**: Bus `RAAHI-01` drives over a road defect. S23 FE camera captures the frame.
-2. **Edge Inference**: YOLO11n on Apple MPS detects `'pothole'` with confidence `0.91`.
-3. **Event Engine**: Confirms box persistence, captures GPS fix `(28.6139, 77.2090)`, slices 15s MP4 clip ($t_0 \pm 7.5	ext{s}$).
-4. **Local Persistence**: Stores event in SQLite queue (`PENDING`).
-5. **Transmission**: Posts JSON package to Central via `POST /api/central/events`.
-6. **Central Ingestion**: Validates schema, assigns `CAN-000012` in `candidate_events`.
-7. **Haversine Deduplication**: Calculates distance to existing records; none found within 10m. Creates authoritative record `POT-000008` in `potholes`.
-8. **Evidence Sync**: Edge uploads MP4 to `POST /api/central/evidence/upload`. Central saves to `videos/evidence/`, uploads to Google Drive folder `RAAHI-Pothole-Evidence`, and updates `POT-000008`.
-9. **GIS Update**: Central Dashboard renders an interactive red hazard pin with video link.
+The collaboration between RAAHI-Edge and RAAHI-Central is organized into deterministic, auditable data flows.
 
 ---
 
-### Walkthrough B: Cross-Bus Traffic Incident Correlation
-1. **Bus A Slowdown**: At 08:30 AM, Bus `RAAHI-01` reports congestion at `(28.6215, 77.2167)`. Central creates `TRF-INC-000003` with `severity: 'high'`, `busesReportedBy: ['RAAHI-01']`.
-2. **Bus B Slowdown**: At 08:34 AM, Bus `RAAHI-04` reports congestion at `(28.6217, 77.2169)` (28m away).
-3. **Deterministic Correlation**:
-   - Central computes distance: $28.4	ext{ m} \le 50.0	ext{ m}$.
-   - Evaluates elapsed time: $4	ext{ min} \le 10	ext{ min}$.
-   - Fuses report into `TRF-INC-000003`, increments `detectionCount: 2`, appends `'RAAHI-04'` to `busesReportedBy`.
-   - Automatically elevates severity from `'high'` to **`'critical'`**.
-4. **Dashboard Alert**: Dashboard displays a pulsing crimson critical traffic beacon.
+### Flow 1: Pothole Detection to Authoritative Municipal Record
+
+```
+[ Transit Bus (Edge) ]                           [ Central Ingestion Gateway ]                    [ Municipal Database / Drive ]
+         |                                                    |                                                |
+         | 1. YOLO Detects Pothole at t0                      |                                                |
+         |    (Confidence: 0.88, Severity: HIGH)              |                                                |
+         |                                                    |                                                |
+         | 2. Ring Buffer Slices 15s MP4                      |                                                |
+         |    (t0 - 5.0s to t0 + 10.0s = 450 frames @ 30 FPS) |                                                |
+         |                                                    |                                                |
+         | 3. POST /api/central/events (JSON Metadata)        |                                                |
+         |--------------------------------------------------->|                                                |
+         |                                                    | 4. Validate schema & GPS bounds                |
+         |                                                    | 5. Query 10m Haversine Radius                  |
+         |                                                    |    -> No existing record within 10m            |
+         |                                                    | 6. Insert into 'candidate_events'              |
+         |                                                    |----------------------------------------------->|
+         |                                                    | 7. Create authoritative 'potholes' record      |
+         |                                                    |----------------------------------------------->|
+         | 8. 201 Created (candidateId: 'CAND-001')           |                                                |
+         |<---------------------------------------------------|                                                |
+         |                                                    |                                                |
+         | 9. POST /api/central/evidence/upload (Binary MP4)  |                                                |
+         |--------------------------------------------------->|                                                |
+         |                                                    | 10. Write MP4 to disk ('videos/evidence/')     |
+         |                                                    | 11. Synchronous Google Drive API Upload        |
+         |                                                    |----------------------------------------------->|
+         |                                                    | 12. Update CandidateEvent & Pothole records    |
+         |                                                    |     with driveWebViewLink and videoUrl         |
+         |                                                    |----------------------------------------------->|
+         | 13. 200 OK (Evidence Linked)                       |                                                |
+         |<---------------------------------------------------|                                                |
+         |                                                    |                                                |
+         |                                                    | 14. Dashboard Polls GET /api/potholes (6s)     |
+         |                                                    |     -> New red pulse marker rendered on map    |
+```
 
 ---
 
-### Walkthrough C: Duplicate Pothole Fusion (Multi-Bus Re-Observation)
-1. **Initial Pothole**: Pothole `POT-000001` exists at `(28.64874, 77.50414)` reported by Bus `RAAHI-01`.
-2. **Second Observation**: 3 hours later, Bus `RAAHI-02` observes the same defect at `(28.64877, 77.50417)`.
-3. **Haversine Calculation**: Distance is $4.21	ext{ meters} \le 10.00	ext{ meters}$.
-4. **Fusion**: New pothole creation is suppressed. `POT-000001` is updated: `detectionCount = 2`, `busesDetectedBy = ['RAAHI-01', 'RAAHI-02']`.
+### Flow 2: Multi-Bus Traffic Congestion Correlation
 
----
+1. **First Transit Vehicle (Bus `RAAHI-01`)**:
+   - Traverses an arterial road corridor at 08:30:00 AM.
+   - Detects severe vehicle clustering (density: 0.78, vehicle count: 24, speed: 6 km/h).
+   - Transmits candidate traffic event at coordinate $(28.6140^{\circ}, 77.2100^{\circ})$.
+   - Central stages candidate in `candidate_events`. Because there is no existing incident within 50 meters, Central records this as an initial single-bus incident.
 
-### Walkthrough D: Digital Evidence Lifecycle
-1. Edge slices 15s MP4 clip centered on $t_0$.
-2. Edge streams binary bytes to `POST /api/central/evidence/upload`.
-3. Central stages the file locally in `videos/evidence/`.
-4. Asynchronously uploads to Google Drive folder `RAAHI-Pothole-Evidence`.
-5. Attaches canonical Drive URL to `candidate_events`, `potholes`, and `trafficincidents`.
-6. Dashboard streams video directly via Google Drive's adaptive player.
+2. **Second Transit Vehicle (Bus `RAAHI-03`)**:
+   - Traverses the same corridor 4 minutes later (08:34:15 AM) at $(28.6142^{\circ}, 77.2103^{\circ})$ — approximately 35 meters from Bus 1's report.
+   - Observes persistent low speed (8 km/h) and vehicle clustering.
+   - Transmits traffic event metadata to Central.
 
+3. **Central Deterministic Correlation**:
+   - Central calculates Haversine spatial distance: $35.4\text{ m} \le 50.0\text{ m}$.
+   - Central calculates temporal separation: $255\text{ s} \le 600\text{ s}$ (10-minute window).
+   - Match verified! Central updates the active incident record:
+     - Adds `RAAHI-03` to `reportingBuses`.
+     - Increments `confirmationCount` to 2.
+     - Escalates status from `UNCONFIRMED` to `MULTI_BUS_VERIFIED`.
+     - Updates the municipal dashboard with a validated traffic incident.
 
 ---
 
 # 22. Central Reliability
 
-RAAHI Central is engineered for resilience under volatile network environments and infrastructure failures.
+RAAHI Central is structured as a resilient prototype server that handles edge disconnects, database timeouts, and cloud storage failures without crashing.
 
-### Resilience Mechanisms
+```
++-------------------------------------------------------------------------+
+|                      DEFENSIVE RELIABILITY MECHANISMS                   |
+|                                                                         |
+|  1. In-Memory Database Fallback                                         |
+|     * Server checks `isDbConnected()` before operations                 |
+|     * Returns clean HTTP 503 if DB offline without terminating process  |
+|                                                                         |
+|  2. Two-Tier Evidence Storage Resilience                                |
+|     * Local filesystem write is PRIMARY ('videos/evidence/')            |
+|     * Google Drive upload is SYNCHRONOUS SECONDARY                      |
+|     * If Drive fails or is unauthenticated, local clip remains served   |
+|                                                                         |
+|  3. Schema Sanitization & Boundary Isolation                            |
+|     * All edge inputs strictly typed and validated                      |
+|     * Unrecognized payload fields stripped defensively                  |
+|     * Bounding box validation prevents corrupt GIS calculations         |
++-------------------------------------------------------------------------+
+```
 
-1. **Idempotent Ingestion**: Network disconnections frequently cause edge devices to re-transmit unacknowledged event packages. Central's unique index on `edgeEventId` guarantees that duplicate HTTP POST requests never create duplicate candidate events or duplicate civic records. Central intercepts duplicate attempts and returns the existing candidate with HTTP 200.
-2. **Graceful Database Degradation**: If MongoDB becomes unreachable, Central intercepts incoming requests via `isDbConnected()` and returns HTTP 503 rather than throwing unhandled promise rejections or crashing the Node.js event loop.
-3. **Offline Evidence Fallback**: If Google Drive credentials expire, token quotas are exceeded, or external Google APIs are blocked by firewall rules, Central gracefully catches the error, logs a warning, stages the evidence clip locally in `videos/evidence/`, and serves the video via Express static routing (`/evidence/<fileName>`). Zero video evidence is lost during cloud outages.
-4. **Input Boundary Shielding**: All GPS coordinates, confidence numbers, bounding boxes, and timestamp strings are audited by strict mathematical guards. Invalid inputs are rejected at the edge of the system before reaching business logic or database queries.
-5. **Auto-Reconnection**: Mongoose connection listeners automatically detect database disconnection and re-establish the connection pool when the database server recovers.
+### 1. Database Connection Resilience
 
+Central maintains a persistent connection to MongoDB using Mongoose with automatic reconnection options. To ensure stability during development:
+- The server checks connection state via an internal `isDbConnected()` helper before executing database operations.
+- If MongoDB is temporarily stopped, endpoints return structured JSON errors (`503 Service Unavailable`) rather than throwing unhandled rejection errors that would terminate the Node.js process.
+- The `GET /api/status` endpoint remains operational to report database connectivity state to administrators.
+
+### 2. Dual-Tier Evidence Storage
+
+Video evidence is protected by a two-tier storage model:
+1. **Primary Local Staging**: Inbound video binaries are immediately saved to the local filesystem under `videos/evidence/{fileName}` using standard POSIX file operations.
+2. **Secondary Cloud Upload**: The server then attempts to synchronize the file to Google Drive. If Google Drive authentication is missing, expired, or network-throttled, Central logs a warning and marks the record with the local route (`/evidence/{fileName}`).
+3. **Graceful Fallback**: The municipal dashboard can stream the clip directly from Central's local static server, ensuring evidence remains accessible even without external internet access.
 
 ---
 
 # 23. Security
 
-Central implements a pragmatic security architecture appropriate for municipal prototype evaluation, with a clear separation between implemented controls and enterprise production recommendations.
+The security posture of RAAHI Central explicitly distinguishes between **implemented prototype controls** and **recommended production enterprise controls**.
 
-### Implemented Security Controls
+```
++-------------------------------------------------------------------------+
+|                  SECURITY POSTURE SPECIFICATION                         |
+|                                                                         |
+|  [CURRENTLY IMPLEMENTED IN PROTOTYPE]                                   |
+|    * File Upload Path Sanitization (path.basename directory traversal)  |
+|    * MIME-Type & Payload Size Limits (100MB max via express.raw)        |
+|    * Local OAuth Token Protection (gitignored drive_token.json)         |
+|    * Architectural Privacy: No continuous video streaming to cloud      |
+|                                                                         |
+|  [RECOMMENDED FOR ENTERPRISE PRODUCTION]                               |
+|    * HMAC-SHA256 Edge Device Authentication (x-raahi-edge-key)         |
+|    * Mutual TLS (mTLS) for Edge-to-Central Transit Encryption           |
+|    * Cloud KMS for OAuth Tokens and DB Credentials                      |
+|    * Role-Based Access Control (RBAC) for Municipal Operators           |
+|    * Automated Edge-Side Face and License Plate Redaction               |
++-------------------------------------------------------------------------+
+```
 
-- **CORS Policy**: Configured via `cors()` middleware in `server/index.js` to control cross-origin requests.
-- **Environment Secret Isolation**: All sensitive credentials (`MONGODB_URI`, `GOOGLE_DRIVE_CLIENT_SECRET`, `GOOGLE_DRIVE_REFRESH_TOKEN`) are isolated in `.env` and loaded via `dotenv`. The `.env` file and `drive_token.json` are strictly gitignored.
-- **Path Traversal Shielding**: When handling evidence file names, Central applies `path.basename(rawFileName)` to strip relative path navigators (`../`), preventing malicious clients from writing files outside `videos/evidence/`.
-- **Upload Request Limiting**: Ingestion endpoints configure explicit payload size caps (`limit: '100mb'`), preventing denial-of-service via memory exhaustion.
-- **Credential Protection**: The Google Drive service implementation strictly forbids exposing OAuth tokens, refresh tokens, or raw client secrets in API responses or log statements.
+### Currently Implemented Security Controls
 
-### Production Security Recommendations (Not Implemented in Prototype)
+1. **Path Traversal Protection**: Upload filenames in headers are sanitized via `path.basename()` to prevent directory traversal attacks.
+2. **Payload Size Restrictions**: Evidence uploads are limited to 100 MB via `express.raw({ limit: '100mb' })` to prevent memory exhaustion.
+3. **Secret Isolation**: OAuth credentials and refresh tokens are loaded from `.env` or `config/drive_token.json`, both excluded from Git via `.gitignore`.
+4. **Architectural Privacy Benefit**: Continuous raw video streams are never transmitted. Central only receives targeted 15-second clips when anomalies are detected.
 
-| Production Security Control | Purpose in Enterprise Municipal Deployment |
-| :--- | :--- |
-| **Mutual TLS (mTLS) / HTTPS** | Enforces hardware-backed cryptographic identity for transit buses and encrypts all telemetry in transit. |
-| **JWT Bearer Token Authentication** | Authenticates edge devices via short-lived JSON Web Tokens signed by transit authority PKI. |
-| **API Rate Limiting** | Implements token-bucket rate limiting via Redis to prevent distributed denial-of-service attacks. |
-| **Private Evidence Storage** | Disables public Google Drive links (`GOOGLE_DRIVE_SHARE_PUBLIC=false`) and serves evidence via signed backend proxy streams (`downloadFileBuffer()`) to safeguard citizen privacy. |
-| **Database Encryption at Rest** | Utilizes MongoDB WiredTiger encryption-at-rest to protect civic infrastructure records. |
+### Recommended Production Controls (Enterprise Roadmap)
 
+For production deployment across a metropolitan municipal network, the following hardening measures are recommended:
+- **Edge API Authentication**: Enforce pre-shared HMAC tokens or JWTs on `POST /api/central/*` endpoints to verify that incoming telemetry originates from registered municipal hardware.
+- **Mutual TLS (mTLS)**: Enforce bidirectional TLS certificate verification between bus gateway modems and Central load balancers.
+- **Role-Based Access Control (RBAC)**: Protect municipal dashboard endpoints with OAuth2 / OpenID Connect authentication, providing distinct roles for Field Technicians, Municipal Engineers, and System Administrators.
+- **Automated PII Redaction**: Implement automated edge-side Gaussian blurring for vehicle license plates and pedestrian faces prior to generating the 15-second evidence clips.
 
 ---
 
 # 24. Performance / Scalability
 
-The fundamental architectural advantage of RAAHI Central is its **event-driven, deterministic computing model**.
+Central's performance derives directly from offloading neural network perception to edge devices.
 
-### Why Central Scales Easily
+```
++-------------------------------------------------------------------------+
+|                    CENTRAL PERFORMANCE CHARACTERISTICS                  |
+|                                                                         |
+|  Compute Model: CPU-bound, deterministic arithmetic                     |
+|  Cloud GPU Requirement: STRICTLY ZERO                                   |
+|  Network Ingestion Model: Sparse event-driven JSON + 15s MP4 clips      |
+|  Spatial Indexing: MongoDB 2dsphere geospatial index                    |
+|  Scaling Potential: Scales horizontally via standard stateless Node.js  |
++-------------------------------------------------------------------------+
+```
 
-1. **Massive Bandwidth Compression**: By performing perception on Edge, Central ingests only structured JSON metadata (~1 KB) and event clips (~3-5 MB) rather than continuous 4.5 Mbps video streams. Ingestion bandwidth is reduced by **$99.8\%$**.
-2. **Sub-Millisecond Algorithmic Execution**: The Haversine deduplication algorithm involves purely basic trigonometric operations ($\sin, \cos, 	ext{atan2}$). In modern V8 JavaScript engines, computing Haversine distance between two coordinates executes in **$1.2	ext{ microseconds}$**.
-3. **Database Index Optimization**: MongoDB compound indexes on `status`, `createdAt`, `edgeEventId`, and `candidateId` ensure that candidate and pothole queries execute in $O(\log N)$ time, avoiding full table scans.
-4. **Node.js Non-Blocking Asynchronous I/O**: The single-threaded event loop easily handles thousands of concurrent HTTP connections because file uploads and database writes are delegated asynchronously to OS worker threads.
+### 1. Zero Cloud GPU Requirement
 
-### Municipal Fleet Capacity Projections
+Because all object detection, tracking, and traffic perception are executed on vehicle-mounted hardware (Samsung Galaxy S23 FE with hardware NPU/GPU acceleration), Central has zero requirement for cloud GPUs. Central runs comfortably on standard, low-cost commodity CPU instances.
 
-| Fleet Scale | Active Buses | Estimated Events / Day | Daily Data Ingestion | Required Server Hardware |
-| :--- | :--- | :--- | :--- | :--- |
-| **Pilot Fleet** | 10 buses | 200 - 500 events | ~1.5 GB video evidence | 1 vCPU, 2 GB RAM ($5/mo) |
-| **District Fleet** | 100 buses | 2,000 - 5,000 events | ~15 GB video evidence | 2 vCPU, 4 GB RAM ($15/mo) |
-| **Metropolitan Fleet** | 1,000 buses | 20,000 - 50,000 events | ~150 GB video evidence | 4 vCPU, 8 GB RAM + S3 ($40/mo) |
+### 2. Efficient Deterministic Arithmetic
 
+Central's intelligence operations are lightweight trigonometric calculations:
+- **Haversine Distance**: Computing the spherical distance between two sets of coordinates requires only basic floating-point arithmetic (sin, cos, atan2). Central evaluates spatial proximity without heavy geospatial GIS overhead.
+- **Temporal Window Comparison**: Time checks involve simple integer subtraction of Unix timestamps.
+
+### 3. Database Geospatial Indexing
+
+MongoDB collections are optimized for spatial and temporal queries:
+- The `location.coordinates` field in the `potholes` collection is indexed with a `2dsphere` index, allowing spherical proximity queries to execute via B-tree index lookups rather than full-collection scans.
+- Compound indexes on `[status, createdAt]` allow fast filtering for municipal dashboard views.
+
+### 4. Fleet Scaling as an Architectural Capability
+
+The event-driven model provides substantial architectural scalability. Unlike traditional surveillance architectures where each vehicle continuously streams 1080p video (generating gigabytes of data per hour per vehicle), RAAHI Edge units transmit only sparse metadata when a defect is encountered. A single Central server can comfortably coordinate dozens of transit routes because network traffic is event-driven rather than continuous.
 
 ---
 
 # 25. Cost Architecture
 
-The financial viability of municipal smart city projects depends directly on cloud operating expenses. RAAHI Central's deterministic architecture slashes operating costs to near zero.
+> [!NOTE]
+> **Illustrative Architectural Cost Comparison (Conceptual Estimate)**  
+> The figures below represent an illustrative architectural comparison between a traditional cloud-streaming perception architecture and RAAHI's edge-native approach. They are conceptual estimates provided to demonstrate the economic rationale of the architecture, not vendor-audited benchmarks.
 
-### Cloud Cost Comparison: RAAHI Central vs. Cloud VLM / Cloud YOLO
+```
++-------------------------------------------------------------------------+
+|                  ARCHITECTURAL COST MODEL COMPARISON                    |
+|                                                                         |
+|  TRADITIONAL CLOUD-STREAMING APPROACH:                                  |
+|    * Continuous RTSP stream from each bus (1080p @ 30 FPS, ~3 Mbps)    |
+|    * Continuous 4G/5G cellular data bandwidth (~1.35 GB / bus / hour)   |
+|    * Cloud GPU instances required 24/7 for video decoding & inference   |
+|    * Massive cloud ingress and storage egress fees                      |
+|                                                                         |
+|  RAAHI EDGE-NATIVE ARCHITECTURE:                                        |
+|    * Zero continuous video streaming to cloud                          |
+|    * Perception executed locally on existing vehicle hardware           |
+|    * Only sparse JSON metadata + 15s MP4 clips transmitted              |
+|    * Central runs on standard, low-cost commodity CPU VPS              |
+|    * Storage uses existing municipal Google Drive / cloud bucket        |
++-------------------------------------------------------------------------+
+```
 
-Cost comparison for a transit fleet of **100 municipal buses**:
+### Architectural Rationale for Edge-Native Processing
 
-| Infrastructure Component | Traditional Cloud AI Architecture (Cloud Streaming + Cloud GPU Inference) | RAAHI Architecture (RAAHI-Edge Perception + Deterministic Central) |
-| :--- | :--- | :--- |
-| **Edge Hardware** | Passive camera streamer ($0 local compute) | Samsung Galaxy S23 FE / NPU Edge Node |
-| **Inbound Video Bandwidth** | 100 buses $	imes$ 4.5 Mbps = **450 Mbps continuous** (~3.24 TB / day) | **Zero continuous video** (~15 GB / day event evidence only) |
-| **Cellular Data Tariffs** | ~97 TB / month $
-ightarrow$ **$\$4,500 - \$9,000 / 	ext{month}$** | ~450 GB / month $
-ightarrow$ **$\$150 - \$300 / 	ext{month}$** |
-| **Cloud GPU Compute** | 10 $	imes$ AWS `g5.2xlarge` (NVIDIA A10G) $
-ightarrow$ **$\$8,760 / 	ext{month}$** | **$0.00** (Zero cloud GPUs required!) |
-| **Central CPU Server** | Large aggregation cluster $
-ightarrow$ $\$400 / 	ext{month}$ | 1 $	imes$ AWS Lightsail (2 vCPU, 4 GB RAM) $
-ightarrow$ **$\$20 / 	ext{month}$** |
-| **Database Tier** | High-throughput cluster $
-ightarrow$ $\$350 / 	ext{month}$ | MongoDB Atlas Shared / Dedicated Tier $
-ightarrow$ **$\$25 / 	ext{month}$** |
-| **Evidence Storage** | S3 Standard (97 TB) $
-ightarrow$ $\$2,200 / 	ext{month}$ | Google Drive / S3 (450 GB) $
-ightarrow$ **$\$10 / 	ext{month}$** |
-| **Total Cloud Operating Cost** | **$\$16,210 - \$20,710 / 	ext{month}$** | **$\$205 - \$355 / 	ext{month}$** |
-| **Annual Municipal Cost** | **$\$194,520 - \$248,520 / 	ext{year}$** | **$\$2,460 - \$4,260 / 	ext{year}$** |
+1. **Elimination of Cloud GPU Compute**:
+   In a traditional computer vision architecture, video from transit cameras is continuously streamed over cellular networks to cloud GPU clusters running YOLO or VLM models. Continuous cloud GPU compute represents a major recurring operational expenditure for municipal transport agencies. By running YOLO11n locally on edge hardware, RAAHI Central eliminates cloud GPU requirements entirely.
 
-> [!TIP]
-> **98.3% Cost Reduction**: By eliminating cloud GPU inference and continuous video ingestion, Project RAAHI slashes annual cloud computing expenses by over **$190,000 per year** per 100 buses, transforming municipal automated road inspection from a cost-prohibitive experiment into an economically sustainable civic utility.
+2. **Substantial Bandwidth Reduction**:
+   Transmitting continuous high-definition video across cellular networks incurs significant SIM data costs and is prone to signal degradation in urban dead zones. RAAHI Edge processes video on-device and transmits only lightweight JSON payloads (approx. 500 bytes per event) and targeted 15-second evidence MP4 clips upon verified defect detections.
 
+3. **Commodity Server Infrastructure**:
+   Because RAAHI Central performs only deterministic validation, spatial deduplication, and database persistence, the entire Central backend and dashboard can be hosted on a standard low-cost CPU virtual private server (VPS), keeping municipal infrastructure overhead minimal.
 
 ---
 
 # 26. Testing
 
-The RAAHI Central repository contains 9 specialized test suites located in `raahi-pothole-detection/dashboard/server/`:
+The Central backend includes 9 specialized verification scripts in `raahi-pothole-detection/dashboard/server/`, validating deterministic deduplication, multi-bus correlation, GPS association, candidate promotion, and evidence storage.
 
 ```
-raahi-pothole-detection/dashboard/server/
-├── test_central_event_ingestion.js      # Canonical event validation & idempotency
-├── test_central_event_promotion.js      # Candidate promotion & class filtering
-├── test_geographical_deduplication.js   # Haversine accuracy & 10m spatial fusion
-├── test_multi_bus_simulation.js         # Multi-bus fleet simulation & correlation
-├── test_phase17_incident_management.js  # Incident status transitions & stats
-├── test_video_evidence.js               # Google Drive upload integration
-├── test_geocoding.js                    # Reverse geocoding client verification
-├── test_gps_association.js              # Coordinate matching logic test
-└── test_history_association.js          # GPS session history rolling buffer test
++-------------------------------------------------------------------------+
+|                       CENTRAL VERIFICATION SUITE                        |
+|                                                                         |
+|  Location: raahi-pothole-detection/dashboard/server/                    |
+|                                                                         |
+|  1. test_central_event_ingestion.js   - Schema validation & deduplication|
+|  2. test_central_event_promotion.js   - Candidate event promotion flow  |
+|  3. test_geographical_deduplication.js - 10m Haversine threshold bounds |
+|  4. test_multi_bus_simulation.js      - 3-bus concurrent corridor test  |
+|  5. test_phase17_incident_management.js- Traffic incident lifecycle    |
+|  6. test_gps_association.js           - Temporal GPS coordinate matching|
+|  7. test_history_association.js       - Historical path interpolation   |
+|  8. test_geocoding.js                 - Landmark reverse geocoding      |
+|  9. test_video_evidence.js            - Drive evidence linking & staging|
++-------------------------------------------------------------------------+
 ```
 
-### 1. Ingestion Validation Suite (`test_central_event_ingestion.js`)
-Tests all 8 schema validation rules and idempotency mechanisms:
-- **Test 1**: Valid Canonical Event Package $
-ightarrow$ `PASSED` (Validation succeeds, normalized correctly).
-- **Test 2**: Missing `eventId` $
-ightarrow$ `PASSED` (Rejected with `"Missing or invalid 'eventId'"`).
-- **Test 3**: Missing `busId` $
-ightarrow$ `PASSED` (Rejected with `"Missing or invalid 'busId'"`).
-- **Test 4**: Invalid `timestamp` $
-ightarrow$ `PASSED` (Rejected unparseable date).
-- **Test 5**: Latitude Out of Bounds ($125.5^{\circ}$ and $-95.0^{\circ}$) $
-ightarrow$ `PASSED` (Rejected out-of-bounds latitude).
-- **Test 6**: Longitude Out of Bounds ($195.0^{\circ}$) $
-ightarrow$ `PASSED` (Rejected out-of-bounds longitude).
-- **Test 7**: Invalid Confidence ($1.5$, $-0.1$, `"high"`) $
-ightarrow$ `PASSED` (Rejected invalid confidence).
-- **Test 8**: Malformed Bounding Box $
-ightarrow$ `PASSED` (Rejected non-numeric object).
+### Test Suite Descriptions
 
-### 2. Haversine Deduplication Suite (`test_geographical_deduplication.js`)
-Verifies mathematical precision and spatial clustering:
-- **Haversine Distance Unit Test**: Evaluates coordinates `(28.613900, 77.209000)` and `(28.613905, 77.209008)`. Calculated distance: **$0.95	ext{ meters}$**. Asserted within $0 < d < 2	ext{ m}$ $
-ightarrow$ `PASSED`.
-- **10-Meter Proximity Test**: Candidate submitted at $4.2	ext{ m}$ from existing pothole $
-ightarrow$ `PASSED` (Matched existing record, incremented `detectionCount` to 2, updated `busesDetectedBy`, zero duplicate records created).
-- **Out-of-Range Test**: Candidate submitted at $45.0	ext{ m}$ from existing pothole $
-ightarrow$ `PASSED` (Exceeded 10m threshold, created new distinct pothole record).
+1. **`test_central_event_ingestion.js`**: Validates schema checks (400 on missing fields), candidate staging in `candidate_events`, and idempotency (409 on duplicate `edgeEventId`).
+2. **`test_geographical_deduplication.js`**: Submits synthetic coordinates at 3m, 7m, 9.5m, and 14m offsets to verify the 10m Haversine boundary.
+3. **`test_multi_bus_simulation.js`**: Simulates 3 buses along a shared corridor to verify 50m / 10-minute traffic incident correlation.
+4. **`test_central_event_promotion.js`**: Tests manual candidate promotion to `potholes`.
+5. **`test_phase17_incident_management.js`**: Tests traffic incident lifecycle and status transitions.
+6. **`test_gps_association.js` & `test_history_association.js`**: Validates timestamp-based interpolation of vehicle coordinates.
+7. **`test_video_evidence.js`**: Validates binary MP4 uploads, local disk staging, Google Drive linking, and database record updates.
 
-### 3. Multi-Bus Fleet Simulation Suite (`test_multi_bus_simulation.js`)
-Simulates 3 independent transit buses (`RAAHI-01`, `RAAHI-02`, `RAAHI-04`) driving along shared bus corridors, verifying cross-bus traffic correlation and automatic severity escalation to `critical`.
+### Running Central Backend Tests
 
-### Executing Central Test Suites
-
+To execute the test suite, ensure MongoDB and the Central server are running:
 ```bash
-cd /Users/ujjwalraj/Desktop/RAAHI22/raahi-pothole-detection/dashboard
-
-# Run Canonical Event Ingestion Suite
-node server/test_central_event_ingestion.js
-
-# Run Haversine Deduplication Suite
-node server/test_geographical_deduplication.js
-
-# Run Candidate Promotion Suite
-node server/test_central_event_promotion.js
-
-# Run Incident Management & Stats Suite
-node server/test_phase17_incident_management.js
+cd /Users/ujjwalraj/Desktop/RAAHI22/raahi-pothole-detection/dashboard/server
+node test_central_event_ingestion.js
+node test_geographical_deduplication.js
+node test_multi_bus_simulation.js
+node test_central_event_promotion.js
 ```
-
 
 ---
 
 # 27. Physical End-to-End Validation
 
-The complete RAAHI system was subjected to physical end-to-end testing using a physical **Samsung Galaxy S23 FE** smartphone and the local Central server.
+RAAHI has been validated using a physical hardware testbed connecting a Samsung Galaxy S23 FE testbed to RAAHI Central.
 
 ```
-+-------------------------------------------------------------------------------+
-|                      PHYSICAL END-TO-END VALIDATION TOPOLOGY                  |
-+-------------------------------------------------------------------------------+
-|                                                                               |
-|   [ Samsung Galaxy S23 FE ]                                                   |
-|     * Mounted in vehicle windshield cab                                       |
-|     * Rear 50 MP Camera streaming 1080p @ 30 FPS                              |
-|     * MediaMTX RTSP Server on Port 8554                                       |
-|     * Local Wi-Fi Network Uplink                                              |
-|            │                                                                  |
-|            ▼ (RTSP H.264 Stream: rtsp://192.168.0.78:8554/live)               |
-|   [ RAAHI-Edge Node (MacBook M-Series) ]                                      |
-|     * OpenCV VideoCapture Ingestion                                           |
-|     * Dual YOLO11n on Apple Silicon MPS (13.8 ms / frame, 72.5 FPS)           |
-|     * ByteTrack Multi-Object Tracking                                         |
-|     * Detection trigger: Physical road test footage with asphalt defects      |
-|     * Slices 15-second MP4 evidence clip (7.5s pre + 7.5s post buffer)        |
-|     * Local SQLite storage in storage/raahi_local.db                          |
-|            │                                                                  |
-|            ▼ (HTTP POST JSON: /api/central/events)                            |
-|            ▼ (HTTP POST MP4:  /api/central/evidence/upload)                   |
-|   [ RAAHI-Central Server (Port 5001) ]                                        |
-|     * Validates schema, checks idempotency                                    |
-|     * Stages into 'candidate_events' (CAN-000001)                             |
-|     * Executes Haversine 10m deduplication -> Promotes to 'potholes'         |
-|     * Streams MP4 to Google Drive folder 'RAAHI-Pothole-Evidence'             |
-|     * Attaches persistent Drive URL to database record                        |
-|            │                                                                  |
-|            ▼ (Periodic Polling: 6-second interval)                            |
-|   [ Central React GIS Dashboard (Port 5173) ]                                 |
-|     * Leaflet cartography displays live bus position at (28.6139, 77.2090)    |
-|     * Red hazard pin appears at exact physical pothole coordinate             |
-|     * Operator clicks pin -> Plays 15-second Google Drive evidence clip       |
-|                                                                               |
-+-------------------------------------------------------------------------------+
++-------------------------------------------------------------------------+
+|                  PHYSICAL VALIDATION TESTBED TOPOLOGY                   |
+|                                                                         |
+|  [ Physical Testbed: Samsung Galaxy S23 FE ]                            |
+|    * Camera: 1080p @ 30 FPS optical stream                             |
+|    * Hardware H.264 Encoder -> MediaMTX RTSP Server                     |
+|    * Edge Machine: MacBook running RAAHI-Edge pipeline                 |
+|    * Dual YOLO11n Models (Road Defects & Vehicle Flow)                 |
+|    * Circular Ring Buffer: 15.0s clip (5.0s pre-event + 10.0s post)   |
+|                                                                         |
+|                                │ (HTTP REST / JSON + MP4)               |
+|                                ▼                                        |
+|  [ RAAHI Central Server (Port 5001) ]                                   |
+|    * Express 4.21 Ingestion Gateway                                     |
+|    * MongoDB 9.10 ('candidate_events', 'potholes')                     |
+|    * 10m Haversine Deduplication Engine                                 |
+|    * Synchronous Google Drive API Evidence Upload                       |
+|                                                                         |
+|                                │ (Periodic Polling Refresh)             |
+|                                ▼                                        |
+|  [ Leaflet GIS Municipal Dashboard (Port 5173) ]                        |
+|    * Rendered verified pothole marker with pulse animation              |
+|    * Playable 15-second MP4 evidence clip in modal                      |
++-------------------------------------------------------------------------+
 ```
 
-### Verified Physical Validation Results
+### Physical Testbed Execution Sequence
 
-- **Optical Ingestion**: Sustained 30.0 FPS from the Samsung S23 FE camera over local Wi-Fi without dropped frames.
-- **Inference Latency**: Dual YOLO11n executed on Apple MPS in **13.8 milliseconds per frame** (equivalent to 72.5 FPS capacity).
-- **Evidence Extraction**: Ring buffer successfully extracted a 15-second MP4 clip centered on the detection timestamp $t_0$.
-- **Central Delivery**: Central ingested the event package in **2.4 milliseconds**, successfully executing 10m Haversine deduplication and writing to MongoDB.
-- **Google Drive Sync**: The 15s MP4 clip was uploaded to Google Drive in **1.8 seconds**, returning an authoritative web view link.
-- **GIS Presentation**: The hazard pin and evidence video were rendered in the web dashboard within the next 6-second polling interval.
+1. **Optical Capture & Edge Detection**:
+   The Samsung Galaxy S23 FE camera streamed roadway video over RTSP at 1080p @ 30 FPS. The edge YOLO11n model detected road defects on-device during streaming, triggering the edge event engine at time $t_0$.
 
+2. **Deterministic Evidence Clipping**:
+   Upon defect trigger, the edge circular ring buffer extracted a verified 15.0-second MP4 evidence clip ($t_0 - 5.0\text{s}$ pre-event buffer + $t_0 + 10.0\text{s}$ post-event buffer = 450 frames total at 30 FPS).
+
+3. **Central Ingestion & Deduplication**:
+   - The edge pipeline transmitted event metadata via `POST /api/central/events`.
+   - Central validated the schema, checked coordinates against MongoDB using Haversine distance, and staged the candidate event.
+   - The edge pipeline uploaded the 15-second MP4 clip via `POST /api/central/evidence/upload`.
+   - Central staged the file on disk and synchronized it to Google Drive, updating the record with the viewable link.
+
+4. **Dashboard Verification**:
+   The Leaflet GIS dashboard on port `5173` refreshed via periodic polling, rendering the verified defect with its Google Drive evidence link.
 
 ---
 
 # 28. Current Limitations
 
-1. **Fixed Spatial Thresholds**: The 10-meter deduplication radius for potholes and 50-meter radius for traffic congestion are fixed constants in environment configuration. In high-speed highway corridors ($> 80	ext{ km/h}$), GPS error envelopes expand, potentially requiring dynamic speed-dependent radius adaptation.
-2. **Urban Canyon GPS Multipath**: In dense metropolitan areas with tall skyscrapers, GPS reflections can cause position drift exceeding 15 to 20 meters. Without map-matching algorithms that snap coordinates to road centerlines, a single physical pothole detected by two buses during high GPS drift may occasionally be recorded as two separate records.
-3. **In-Memory Fleet Registry Persistence**: The `activeFleet` Map in `server/index.js` is stored in process RAM. If the Node.js server restarts, connected vehicle state is cleared until each vehicle transmits its next telemetry breadcrumb or event package.
-4. **Google Drive API Quotas**: Google Drive API v3 enforces daily rate limits (10,000 requests/day) and per-user upload limits (750 GB/day). While ideal for prototypes and small transit pilots, enterprise fleets with hundreds of buses will require migration to dedicated cloud object storage (e.g., AWS S3 or Cloudflare R2).
-5. **Authentication Maturity**: Prototype API endpoints on port 5001 are unauthenticated to simplify local evaluation. Production transit deployments will require mutual TLS or JWT bearer token validation on `POST /api/central/events`.
+While RAAHI Central provides a deterministic aggregation and GIS platform, several constraints apply to the current prototype:
 
+1. **Prototype Deployment Architecture**:
+   Central is implemented as a single-instance development server on Node.js and MongoDB, without distributed failover or horizontal autoscaling.
+
+2. **Synchronous Google Drive Upload**:
+   Evidence clip uploads in `POST /api/central/evidence/upload` invoke `googleDriveService.uploadEvidenceClip()` synchronously within the HTTP route handler. Under poor network conditions or Google API throttling, the HTTP response time can extend until the cloud upload completes or times out.
+
+3. **Edge GPS Physical Precision**:
+   Vehicle GPS receivers on edge transit units update at approximately 1 Hz (one sample per second). Central validates coordinates and formats timestamps with millisecond precision, but mathematical timestamp formatting does not alter the underlying physical sampling rate of the GNSS receiver.
+
+4. **Dashboard Polling Update Loop**:
+   The Leaflet municipal dashboard relies on periodic client-side polling (2-second intervals for fleet telemetry, 6-second intervals for defect updates) rather than push-based WebSockets or Server-Sent Events (SSE).
+
+5. **Demo Fallback Telemetry**:
+   The dashboard includes fallback mock fleet data in `dashboard/src/data/mockData.js`. When zero physical transit buses are actively transmitting telemetry to Central, the dashboard visualizes this initial demo dataset to maintain interface layout integrity for demonstration purposes.
 
 ---
 
 # 29. Future Improvements
 
-> [!NOTE]
-> The features outlined in this section represent planned architectural enhancements and are **NOT CURRENTLY IMPLEMENTED** in the active codebase.
+The following architectural enhancements are planned for transition from the current prototype to full municipal scale:
 
-1. **Road Network Map-Matching (Not Implemented)**: Integrating OpenStreetMap road network vector geometries to snap incoming vehicle GPS breadcrumbs to canonical road centerlines before executing spatial deduplication, eliminating urban canyon multipath drift.
-2. **PostGIS / MongoDB 2dsphere Geospatial Indexing (Not Implemented)**: Upgrading coordinate indexing to native spherical 2dsphere spatial indexes with `$nearSphere` queries, enabling sub-millisecond proximity queries across millions of historical hazard records.
-3. **Dedicated Cloud Object Storage (Not Implemented)**: Migrating evidence storage from Google Drive to S3-compatible object storage (e.g., AWS S3, Cloudflare R2) with pre-signed upload URLs and CloudFront CDN streaming.
-4. **Enterprise Message Broker (Not Implemented)**: Deploying an Apache Kafka or RabbitMQ event stream buffer between Express ingestion and database workers to absorb massive traffic spikes during severe weather events.
-5. **Municipal Work Order API Dispatch (Not Implemented)**: Creating bidirectional webhooks with civic maintenance platforms (such as Cityworks or SAP Public Sector) to automatically generate road repair work orders when a pothole's `detectionCount` exceeds a municipal threshold.
-6. **Hardware-Backed Device Identity (Not Implemented)**: Enforcing hardware-backed X.509 client certificates on all transit bus edge computers to cryptographically prevent telemetry spoofing.
+1. **Decoupled Asynchronous Evidence Queue**:
+   Migrate cloud storage uploads from synchronous route handlers to an asynchronous task queue (e.g., BullMQ backed by Redis). Inbound 15-second MP4 evidence clips will be acknowledged immediately upon local disk staging, with background workers managing cloud upload, retry backoff, and Google Drive rate limits.
 
+2. **Push-Based WebSocket / SSE Telemetry**:
+   Replace client-side HTTP polling with a persistent WebSocket or Server-Sent Events (SSE) feed. As soon as Central correlates a multi-bus congestion event or deduplicates a pothole, the updated state will be pushed directly to municipal operators.
+
+3. **Automated Edge Privacy Blurring**:
+   Integrate an automated face and license plate redaction filter directly into the RAAHI-Edge ring buffer prior to MP4 encoding, ensuring no personally identifiable information (PII) is captured in exported evidence clips.
+
+4. **Containerized Multi-Node Deployment**:
+   Package the Central server, MongoDB replica set, and React dashboard as containerized microservices managed via Docker Compose and Kubernetes for enterprise production resilience.
+
+5. **Municipal Work-Order Integration**:
+   Build automated webhooks connecting Central's `potholes` collection to municipal public works ticketing systems (e.g., Cityworks, SAP), enabling automatic repair dispatch when defect confirmation thresholds are satisfied.
 
 ---
 
 # 30. Installation
 
-### System Prerequisites
-- **Operating System**: macOS (Apple Silicon / Intel) or Linux (Ubuntu 20.04+, Debian 11+)
-- **Node.js**: Version `20.x` or higher (LTS recommended)
-- **Node Package Manager**: `npm` Version `10.x` or higher
-- **Database**: MongoDB Community Server `6.0+` or `7.0+` (local or MongoDB Atlas)
-- **Git & Git LFS**: Git version `2.30+` with Git LFS installed (`git lfs install`)
+Follow these steps to set up RAAHI Central on a local server or development workstation.
 
----
+### Prerequisites
+- **Node.js**: v18.0.0 or higher
+- **npm**: v9.0.0 or higher
+- **MongoDB**: Community Edition v7.0 or higher (running locally on port `27017`)
+- **Git** & **Git LFS**: Installed and initialized
 
-### Step-by-Step Setup
-
+### Step 1: Clone the Repository
 ```bash
-# 1. Clone the Repository
 git clone https://github.com/iUjjwalRaj/RAAHI-Central.git
-cd RAAHI-Central/raahi-pothole-detection/dashboard
-
-# 2. Install Node.js Dependencies
-npm install
-
-# 3. Pull Large Binary Model Weights via Git LFS
-git lfs pull
-
-# 4. Configure Environment Variables
-cp .env.example .env
+cd RAAHI-Central
 ```
 
+### Step 2: Install Central Backend Dependencies
+```bash
+cd raahi-pothole-detection/dashboard/server
+npm install
+```
+
+### Step 3: Install Central Dashboard Dependencies
+```bash
+cd /Users/ujjwalraj/Desktop/RAAHI22/raahi-pothole-detection/dashboard
+npm install
+```
+
+### Step 4: Verify Git LFS Binary Tracking
+```bash
+cd /Users/ujjwalraj/Desktop/RAAHI22
+git lfs pull
+```
 
 ---
 
 # 31. Environment Configuration
 
-All configurable parameters for RAAHI Central are defined in `raahi-pothole-detection/dashboard/.env`.
+RAAHI Central requires environment configuration for server networking, database connectivity, and Google Drive cloud evidence storage.
 
-| Variable Name | Required? | Default Value | Description | Example Value |
-| :--- | :--- | :--- | :--- | :--- |
-| `PORT` | Optional | `5001` | HTTP port for Express server | `5001` |
-| `MONGODB_URI` | Required | `mongodb://localhost:27017/raahi` | MongoDB connection URI string | `mongodb://127.0.0.1:27017/raahi` |
-| `POTHOLE_DEDUP_RADIUS_METERS` | Optional | `10` | Haversine deduplication radius (meters) | `10` |
-| `GEOCODING_PROVIDER` | Optional | `nominatim` | Reverse geocoding provider | `nominatim` |
-| `GEOCODING_USER_AGENT` | Optional | `RAAHI-Pothole-Detection/1.0` | User-Agent header for Nominatim OSM API | `RAAHI-Central/1.0` |
-| `GEOCODING_TIMEOUT_MS` | Optional | `8000` | Geocoding timeout in milliseconds | `8000` |
-| `GOOGLE_DRIVE_CLIENT_ID` | Optional | *(Empty)* | Google OAuth 2.0 Web Client ID | `your_google_client_id.apps.googleusercontent.com` |
-| `GOOGLE_DRIVE_CLIENT_SECRET`| Optional | *(Empty)* | Google OAuth 2.0 Client Secret | `your_google_client_secret` |
-| `GOOGLE_DRIVE_REDIRECT_URI` | Optional | `http://localhost:5001/api/dev/auth/google/callback` | OAuth redirect URI | `http://localhost:5001/api/dev/auth/google/callback` |
-| `GOOGLE_DRIVE_REFRESH_TOKEN`| Optional | *(Empty)* | Long-lived Google OAuth refresh token | `your_google_refresh_token` |
-| `GOOGLE_DRIVE_FOLDER_ID` | Optional | *(Empty)* | Target Google Drive folder ID | `your_google_folder_id` |
-| `GOOGLE_DRIVE_SHARE_PUBLIC` | Optional | `false` | Grants public read link to uploaded evidence | `true` (Demo) / `false` (Prod) |
+Create or update the `.env` file in `raahi-pothole-detection/dashboard/server/.env`:
 
-> [!CAUTION]
-> Never commit `.env` or `config/drive_token.json` containing live credentials to public repositories. Both are strictly ignored by `.gitignore`.
+```bash
+# =================================================================
+# RAAHI Central Server Configuration
+# =================================================================
 
+# Server Port (Default: 5001)
+PORT=5001
+
+# MongoDB Connection String (Local Development)
+MONGODB_URI=mongodb://127.0.0.1:27017/raahi_central
+
+# =================================================================
+# Google Drive API Configuration (OAuth 2.0)
+# =================================================================
+# Obtain these credentials from Google Cloud Console:
+# APIs & Services -> Credentials -> OAuth 2.0 Client IDs
+
+GOOGLE_DRIVE_CLIENT_ID=your_oauth_client_id.apps.googleusercontent.com
+GOOGLE_DRIVE_CLIENT_SECRET=your_oauth_client_secret
+GOOGLE_DRIVE_REDIRECT_URI=http://localhost:5001/api/dev/auth/google/callback
+
+# Target Google Drive Folder Name for Video Evidence
+GOOGLE_DRIVE_FOLDER_NAME=RAAHI-Evidence-Storage
+```
+
+> [!TIP]
+> **Local Fallback Mode**: If Google Drive credentials are not configured, Central operates in local fallback mode: evidence clips are saved to `videos/evidence/` and served directly via `http://localhost:5001/evidence/:fileName`.
 
 ---
 
 # 32. Startup Instructions
 
-Operating RAAHI Central requires running MongoDB, the Express backend, and the Vite frontend.
+Follow these commands to launch the complete RAAHI Central backend and dashboard.
 
+### Step 1: Start MongoDB
+Ensure MongoDB is running locally:
 ```bash
-# 1. Start MongoDB Service (macOS Homebrew)
-brew services start mongodb-community
+# macOS (Homebrew)
+brew services start mongodb-community@7.0
 
-# Verify MongoDB is accepting connections
-mongosh --eval "db.adminCommand('ping')"
-
-# 2. Start the Central Backend Server (Port 5001)
-cd /Users/ujjwalraj/Desktop/RAAHI22/raahi-pothole-detection/dashboard
-npm run server
-
-# 3. Start the Central Web Dashboard (Port 5173, separate terminal)
-cd /Users/ujjwalraj/Desktop/RAAHI22/raahi-pothole-detection/dashboard
-npm run dev
-
-# 4. Verify Central API Health
-curl -s http://localhost:5001/api/status | jq .
+# Linux (systemd)
+sudo systemctl start mongod
 ```
 
+### Step 2: Start Central Backend Server (Port 5001)
+```bash
+cd /Users/ujjwalraj/Desktop/RAAHI22/raahi-pothole-detection/dashboard/server
+npm start
+```
+*The server will bind to `http://localhost:5001` and output connection logs.*
+
+### Step 3: Start Central Municipal Dashboard (Port 5173)
+In a separate terminal window:
+```bash
+cd /Users/ujjwalraj/Desktop/RAAHI22/raahi-pothole-detection/dashboard
+npm run dev
+```
+*Vite will launch the dashboard at `http://localhost:5173`.*
+
+### Step 4: Verify Backend Health
+Verify that Central is operational:
+```bash
+curl http://localhost:5001/api/status
+```
+Expected output:
+```json
+{
+  "status": "ONLINE",
+  "database": { "connected": true }
+}
+```
 
 ---
 
 # 33. Troubleshooting
 
-### 1. MongoDB Connection Refused (`ECONNREFUSED 127.0.0.1:27017`)
-- **Cause**: MongoDB daemon (`mongod`) is not running.
-- **Remedy**: Start MongoDB via `brew services start mongodb-community` (macOS) or `sudo systemctl start mongod` (Linux). Verify port `27017` via `lsof -i :27017`.
+Common development and operational issues with their resolutions:
 
-### 2. Port 5001 Already in Use (`EADDRINUSE`)
-- **Cause**: A previous server instance is holding port 5001.
-- **Remedy**: Terminate the process: `lsof -ti :5001 | xargs kill -9`.
+1. **MongoDB Connection Failure (`ECONNREFUSED 127.0.0.1:27017`)**:
+   - Cause: MongoDB service is not running.
+   - Fix: Start MongoDB via `brew services start mongodb-community@7.0` or `mongod`. Central will run in degraded mode and return HTTP 503 on database routes if offline.
 
-### 3. Google Drive Upload Failure (401 Unauthorized / Invalid Grant)
-- **Cause**: Expired refresh token or missing `config/drive_token.json`.
-- **Remedy**: Re-authenticate via `http://localhost:5001/api/dev/auth/google/login`.
+2. **Port Conflict on Port 5001 or 5173**:
+   - Cause: A previous instance of Node.js or Vite is still bound to the port.
+   - Fix: Locate and terminate the occupying process:
+     ```bash
+     lsof -i :5001
+     kill -9 <PID>
+     ```
 
-### 4. CORS Errors on Web Dashboard
-- **Cause**: Frontend origin not recognized by backend CORS middleware.
-- **Remedy**: Ensure `cors()` is active in `server/index.js` and Vite runs on `http://localhost:5173`.
+3. **Google Drive Upload Warnings (`Google Drive not authenticated`)**:
+   - Cause: OAuth credentials are unconfigured or token has expired.
+   - Fix: Authenticate Central by opening `http://localhost:5001/api/dev/auth/google/login` in your browser and completing the Google consent flow. Note that Central continues to function without Drive by serving evidence clips locally.
 
-### 5. Evidence Upload Rejected (HTTP 413 Payload Too Large)
-- **Cause**: Upload clip exceeds Express body size limit.
-- **Remedy**: Verify `express.raw({ limit: '100mb' })` is configured on `/api/central/evidence/upload`.
-
-### 6. Potholes Not Deduplicating
-- **Cause**: Coordinates differ by $> 10	ext{m}$, or status is `'ignored'`.
-- **Remedy**: Check `POTHOLE_DEDUP_RADIUS_METERS` in `.env` and verify edge GPS accuracy.
-
+4. **Missing Evidence Directory Permissions**:
+   - Cause: The `videos/evidence/` directory cannot be created or written to.
+   - Fix: Ensure the directory exists and has write permissions:
+     ```bash
+     mkdir -p /Users/ujjwalraj/Desktop/RAAHI22/raahi-pothole-detection/videos/evidence
+     chmod 755 /Users/ujjwalraj/Desktop/RAAHI22/raahi-pothole-detection/videos/evidence
+     ```
 
 ---
 
 # 34. Repository / GitHub
 
+RAAHI Central is version-controlled on GitHub as part of Project RAAHI.
+
 - **GitHub Repository**: `https://github.com/iUjjwalRaj/RAAHI-Central.git`
-- **Local Path**: `/Users/ujjwalraj/Desktop/RAAHI22`
 - **Primary Branch**: `main`
-- **License**: MIT Open Source License
+- **Local Working Directory**: `/Users/ujjwalraj/Desktop/RAAHI22`
+- **Edge Companion Repository**: `https://github.com/iUjjwalRaj/RAAHI-Edge.git`
 
-### Git LFS Configuration
-Tracked LFS patterns in `.gitattributes`:
-```gitattributes
-*.pt filter=lfs diff=lfs merge=lfs -text
-*.zip filter=lfs diff=lfs merge=lfs -text
-*.dylib filter=lfs diff=lfs merge=lfs -text
-*.so filter=lfs diff=lfs merge=lfs -text
+### Binary Asset Handling (Git LFS)
+Large model weights and pre-trained perception assets from earlier development are tracked using Git Large File Storage (Git LFS) in `.gitattributes`. To ensure all binary assets are present after cloning:
+```bash
+git lfs install
+git lfs pull
 ```
-
-### Relationship to RAAHI-Edge
-
-| Aspect | RAAHI-Edge | RAAHI-Central |
-| :--- | :--- | :--- |
-| **Repository** | `https://github.com/iUjjwalRaj/RAAHI-Edge.git` | `https://github.com/iUjjwalRaj/RAAHI-Central.git` |
-| **Role** | Vehicle-side perception & tracking | Cloud-side aggregation & municipal GIS |
-| **Language** | Python 3.12 (OpenCV, PyTorch, YOLO) | JavaScript / Node.js ES Modules (Express, React) |
-| **Hardware** | Samsung Galaxy S23 FE + Edge NPU | Cloud / On-Premise CPU Server + MongoDB |
-
 
 ---
 
 # 35. Technical Glossary
 
-- **Candidate Event**: An unverified road defect or traffic anomaly package received from an edge vehicle, staged in `candidate_events` as an immutable audit record prior to authoritative promotion.
-- **Authoritative Pothole**: A canonical municipal asset record in `potholes` representing a verified physical defect in the road surface, complete with detection counts, reporting bus IDs, and lifecycle status (`open`, `repaired`).
-- **Traffic Incident**: A correlated municipal traffic congestion record in `trafficincidents` synthesized across multiple independent vehicles within spatial-temporal thresholds.
-- **Haversine Distance**: The great-circle distance between two geographic points on a sphere calculated from their decimal latitudes and longitudes using spherical trigonometry.
-- **Spatial Deduplication**: The algorithmic process of identifying multiple sensor observations that refer to the same physical real-world object and fusing them into a single canonical record.
-- **Temporal Correlation Window**: A rolling time filter (10 minutes) used to determine whether multiple vehicle congestion reports represent concurrent traffic conditions.
-- **Fleet Aggregation**: The synthesis of sensor data across multiple independent transit vehicles to eliminate individual sensor noise and achieve statistical certainty.
-- **GIS (Geographic Information System)**: Cartographic software framework for capturing, managing, and presenting spatially referenced geographic data.
-- **Idempotency**: The property of an API operation where making multiple identical requests has the same net effect as making a single request.
-- **$t_0$-Anchored Evidence Clip**: A 15-second video recording centered on the exact instant ($t_0$) an anomaly occurred ($7.5	ext{s}$ pre-buffer + $7.5	ext{s}$ post-buffer).
-- **Deterministic Processing**: A computing paradigm where identical inputs always produce identical outputs without probabilistic sampling, randomness, or model hallucinations.
-- **ByteTrack**: A high-efficiency multi-object tracking algorithm that associates detection boxes across video frames using Kalman filtering and motion similarity.
-- **WGS 84**: World Geodetic System 1984, the standard geographic coordinate reference system used by GPS and RAAHI.
-- **Nominatim**: An open-source reverse geocoding tool based on OpenStreetMap data, translating coordinates into street addresses.
-
+- **Candidate Event**: A staged edge observation stored in `candidate_events` as an audit record prior to deduplication.
+- **Haversine Formula**: Spherical trigonometric equation calculating great-circle distances between GPS coordinates.
+- **Spatial Deduplication**: Deterministic algorithm matching defect coordinates within 10 meters to prevent duplicate records.
+- **Multi-Bus Correlation**: Correlation engine verifying traffic reports across buses within a 50m / 10-minute window.
+- **Evidence Clip**: 15.0-second MP4 file ($t_0 - 5.0\text{s}$ pre-event + $t_0 + 10.0\text{s}$ post-event = 450 frames @ 30 FPS) providing visual proof.
+- **GNSS / GPS**: Vehicle satellite receiver delivering telemetry at ~1 Hz.
+- **Zero Central AI**: Invariant that Central performs strictly zero neural network or VLM inference, remaining deterministic.
 
 ---
 
 # 36. Final Architecture Summary
 
-The core architectural thesis of Project RAAHI can be stated in a single fundamental sentence:
+Project RAAHI establishes a strict, clean division of responsibility between on-vehicle edge intelligence and centralized municipal fleet aggregation:
 
-> **RAAHI-Edge performs perception; RAAHI-Central performs deterministic fleet intelligence.**
+```
++-------------------------------------------------------------------------+
+|                    RAAHI TWO-TIER ARCHITECTURE SUMMARY                  |
+|                                                                         |
+|  1. RAAHI-EDGE (Vehicle Tier):                                          |
+|     * Local camera stream acquisition (Samsung Galaxy S23 FE via RTSP)  |
+|     * Hardware-accelerated dual YOLO11n object detection                |
+|     * On-device ByteTrack multi-object tracking                         |
+|     * Edge traffic density & speed estimation                           |
+|     * Circular ring buffer evidence slicing (15s: 5s pre + 10s post)    |
+|     * GPS association (~1 Hz telemetry)                                 |
+|     * Local SQLite buffering for offline resilience                     |
+|                                                                         |
+|  2. RAAHI-CENTRAL (Server & GIS Tier):                                  |
+|     * Strictly ZERO AI, VLM, LLM, or YOLO inference                     |
+|     * Defensive schema validation & idempotency checks                  |
+|     * Candidate event staging & audit trail ('candidate_events')        |
+|     * Deterministic 10-meter Haversine spatial deduplication            |
+|     * Deterministic 50m / 10-minute multi-bus traffic correlation       |
+|     * Authoritative civic state persistence ('potholes', 'traffic')     |
+|     * Request-driven video evidence storage via Google Drive & local disk|
+|     * Leaflet GIS municipal dashboard with near-real-time polling       |
++-------------------------------------------------------------------------+
+```
 
-By enforcing this strict architectural boundary:
-1. **Perception Belongs at the Edge**: High-frequency video streams (1080p @ 30 FPS) never leave the bus cabin. Edge devices utilize hardware neural accelerators to execute dual YOLO11n models and ByteTrack, extracting structured hazard vectors locally.
-2. **Aggregation Belongs in the Cloud**: Central receives lightweight JSON packages and targeted 15-second MP4 evidence clips. Central never runs AI inference, relying instead on deterministic spherical geometry, spatial clustering, and multi-bus correlation.
-3. **Radical Economic Efficiency**: Cloud operating costs are reduced by **$98.3\%$** compared to continuous video streaming architectures, enabling municipal transit authorities to deploy automated road maintenance monitoring across hundreds of buses for under $\$300$ per month.
-4. **Civic Trust & Verifiability**: Every pothole repair ticket and traffic alert generated by Central is backed by mathematical proof, multi-vehicle consensus, and indisputable digital video evidence.
-
-Through this elegant synergy between edge perception and deterministic central aggregation, Project RAAHI delivers a production-ready, economically sustainable, and technologically rigorous smart city solution for 21st-century urban transit.
-
+By executing all deep learning on edge hardware and keeping Central 100% deterministic, RAAHI provides municipal transit authorities with an auditable, scalable, and economically sustainable road safety and traffic monitoring platform.
