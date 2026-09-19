@@ -245,7 +245,7 @@ export default function PhoneCameraSender({ onBack }) {
             gap: '6px',
             background: '#0e141d',
             border: '1px solid #1f2a38',
-            color: '#8e9ab1',
+            color: 'var(--muted)',
             borderRadius: '8px',
             padding: '8px 14px',
             fontSize: '11px',
@@ -288,10 +288,10 @@ export default function PhoneCameraSender({ onBack }) {
         <p className="eyebrow" style={{ color: '#ff496c' }}>
           <span></span> MOBILE ROAD SCANNER • PHASE 14
         </p>
-        <h2 style={{ fontSize: '26px', margin: '0 0 6px', color: '#fff' }}>
+        <h2 style={{ fontSize: '26px', margin: '0 0 6px', color: 'var(--text)' }}>
           Live Phone Camera Streamer
         </h2>
-        <p style={{ color: '#8e9ab1', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>
+        <p style={{ color: 'var(--muted)', fontSize: '12px', margin: 0, lineHeight: 1.5 }}>
           Turns this mobile phone into a vehicle-mounted road sensor. Captures frames from the road camera
           and streams them over Wi-Fi to your Mac for real-time YOLO11n pothole detection.
         </p>
@@ -345,7 +345,7 @@ export default function PhoneCameraSender({ onBack }) {
 
       {/* TELEMETRY CARDS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '16px' }}>
-        <div style={{ background: '#0e121a', border: '1px solid #222a38', borderRadius: '10px', padding: '12px 14px' }}>
+        <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: '10px', padding: '12px 14px' }}>
           <small style={{ fontSize: '9px', color: '#7f8ca3', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
             Capture FPS
           </small>
@@ -354,7 +354,7 @@ export default function PhoneCameraSender({ onBack }) {
           </b>
         </div>
 
-        <div style={{ background: '#0e121a', border: '1px solid #222a38', borderRadius: '10px', padding: '12px 14px' }}>
+        <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: '10px', padding: '12px 14px' }}>
           <small style={{ fontSize: '9px', color: '#7f8ca3', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
             Frames Sent
           </small>
@@ -363,7 +363,7 @@ export default function PhoneCameraSender({ onBack }) {
           </b>
         </div>
 
-        <div style={{ background: '#0e121a', border: '1px solid #222a38', borderRadius: '10px', padding: '12px 14px' }}>
+        <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: '10px', padding: '12px 14px' }}>
           <small style={{ fontSize: '9px', color: '#7f8ca3', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
             Wi-Fi Latency
           </small>
@@ -372,11 +372,11 @@ export default function PhoneCameraSender({ onBack }) {
           </b>
         </div>
 
-        <div style={{ background: '#0e121a', border: '1px solid #222a38', borderRadius: '10px', padding: '12px 14px' }}>
+        <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: '10px', padding: '12px 14px' }}>
           <small style={{ fontSize: '9px', color: '#7f8ca3', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
             Resolution
           </small>
-          <b style={{ fontSize: '18px', color: '#fff', display: 'block', marginTop: '3px' }}>
+          <b style={{ fontSize: '18px', color: 'var(--text)', display: 'block', marginTop: '3px' }}>
             640×360
           </b>
         </div>
@@ -399,7 +399,7 @@ export default function PhoneCameraSender({ onBack }) {
           <Navigation style={{ width: 16, height: 16, color: includeGps ? '#38bdf8' : '#64748b' }} />
           <div>
             <b style={{ fontSize: '11px', color: '#e2e8f0' }}>Integrated Phone GPS: {gpsStatusText}</b>
-            <p style={{ fontSize: '10px', color: '#94a3b8', margin: 0 }}>Transmits live GPS telemetry to Express for real-time pothole association</p>
+            <p style={{ fontSize: '10px', color: 'var(--muted)', margin: 0 }}>Transmits live GPS telemetry to Express for real-time pothole association</p>
           </div>
         </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#cbd5e1', cursor: 'pointer' }}>
@@ -422,18 +422,18 @@ export default function PhoneCameraSender({ onBack }) {
       {/* CAMERA VIEWER PANEL */}
       <div
         style={{
-          background: '#070a0f',
-          border: '1px solid #1f2a38',
+          background: 'var(--panel)',
+          border: '1px solid var(--line)',
           borderRadius: '12px',
           overflow: 'hidden',
           marginBottom: '18px',
           position: 'relative'
         }}
       >
-        <div style={{ padding: '12px 16px', background: '#0c1119', borderBottom: '1px solid #1f2a38', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '12px 16px', background: 'var(--panel2)', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Camera style={{ width: 15, height: 15, color: '#38bdf8' }} />
-            <b style={{ fontSize: '12px', color: '#fff' }}>Road Camera Preview</b>
+            <b style={{ fontSize: '12px', color: 'var(--text)' }}>Road Camera Preview</b>
             <span className={streaming ? "real-tag" : "demo-tag"} style={{ fontSize: '8px' }}>
               {facingMode === 'environment' ? 'REAR ROAD CAMERA' : 'FRONT CAMERA'}
             </span>
@@ -445,7 +445,7 @@ export default function PhoneCameraSender({ onBack }) {
             style={{
               background: '#131c28',
               border: '1px solid #26354a',
-              color: '#8e9ab1',
+              color: 'var(--muted)',
               borderRadius: '6px',
               padding: '4px 8px',
               fontSize: '10px',
@@ -491,7 +491,7 @@ export default function PhoneCameraSender({ onBack }) {
               <b style={{ fontSize: '14px', color: '#e2e8f0', display: 'block', marginBottom: '6px' }}>
                 Camera Ready to Stream
               </b>
-              <p style={{ fontSize: '11px', color: '#94a3b8', maxWidth: '380px', margin: '0 auto 16px', lineHeight: 1.4 }}>
+              <p style={{ fontSize: '11px', color: 'var(--muted)', maxWidth: '380px', margin: '0 auto 16px', lineHeight: 1.4 }}>
                 Mount phone horizontally facing the road. Tap <b>Start Camera</b> to stream live video frames to your Mac.
               </p>
             </div>
@@ -520,7 +520,7 @@ export default function PhoneCameraSender({ onBack }) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  color: '#fff',
+                  color: 'var(--text)',
                   fontSize: '9px',
                   fontWeight: 800
                 }}
@@ -555,7 +555,7 @@ export default function PhoneCameraSender({ onBack }) {
             onClick={startCamera}
             style={{
               background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-              color: '#fff',
+              color: 'var(--text)',
               border: 'none',
               borderRadius: '10px',
               padding: '14px',
@@ -629,7 +629,7 @@ export default function PhoneCameraSender({ onBack }) {
           <Sparkles style={{ width: 14, height: 14, color: '#3ee2a2' }} />
           Run Live YOLO11n Inference on Mac
         </b>
-        <p style={{ fontSize: '11px', color: '#94a3b8', margin: '6px 0 10px', lineHeight: 1.4 }}>
+        <p style={{ fontSize: '11px', color: 'var(--muted)', margin: '6px 0 10px', lineHeight: 1.4 }}>
           Once the camera is streaming above, open a terminal on your Mac and run the dedicated live inference module:
         </p>
 

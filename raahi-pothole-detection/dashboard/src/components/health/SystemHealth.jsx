@@ -258,8 +258,8 @@ export default function SystemHealth({ setPage }) {
     return (
       <div className="page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
         <Loader2 className="spinning" style={{ width: 40, height: 40, color: '#3ee2a2', marginBottom: 16 }} />
-        <h3 style={{ margin: 0, fontSize: 16, color: '#f1f5f9' }}>Auditing Central Subsystem Health...</h3>
-        <p style={{ margin: '8px 0 0', fontSize: 12, color: '#8e9ab1' }}>
+        <h3 style={{ margin: 0, fontSize: 16, color: 'var(--text)' }}>Auditing Central Subsystem Health...</h3>
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--muted)' }}>
           Querying Central API, MongoDB readyState, and evidence storage
         </p>
       </div>
@@ -281,15 +281,15 @@ export default function SystemHealth({ setPage }) {
               AUTHORITATIVE HEALTH
             </span>
           </div>
-          <h2 style={{ margin: 0, fontSize: 26, letterSpacing: '-0.02em', color: '#fff' }}>Central System Health &amp; Pipeline Status</h2>
-          <p style={{ margin: '6px 0 0', fontSize: 12, color: '#8e9ab1', maxWidth: 740 }}>
+          <h2 style={{ margin: 0, fontSize: 26, letterSpacing: '-0.02em', color: 'var(--text)' }}>Central System Health &amp; Pipeline Status</h2>
+          <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--muted)', maxWidth: 740 }}>
             Real-time operational verification for Central Express listeners, MongoDB database connectivity, and Google Drive evidence storage.
           </p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {lastRefreshed && (
-            <span style={{ fontSize: 10, color: '#64748b', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ fontSize: 10, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
               <Clock style={{ width: 12 }} /> Verified {lastRefreshed}
             </span>
           )}
@@ -311,15 +311,15 @@ export default function SystemHealth({ setPage }) {
         {/* CARD A: CENTRAL API */}
         <div className="panel" style={{ padding: '16px 18px', borderLeft: `4px solid ${subsystemState.api.status === 'OPERATIONAL' ? '#3ee2a2' : '#ff4d6d'}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8e9ab1' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)' }}>
               Central API Gateway
             </span>
             <Server style={{ width: 16, color: subsystemState.api.status === 'OPERATIONAL' ? '#3ee2a2' : '#ff4d6d' }} />
           </div>
-          <strong style={{ display: 'block', fontSize: 20, letterSpacing: '-0.02em', color: '#fff', lineHeight: 1.2 }}>
+          <strong style={{ display: 'block', fontSize: 20, letterSpacing: '-0.02em', color: 'var(--text)', lineHeight: 1.2 }}>
             {subsystemState.api.status}
           </strong>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, fontSize: 10, color: '#64748b' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, fontSize: 10, color: 'var(--muted)' }}>
             <span>Express Node.js</span>
             <span style={{ color: '#3ee2a2', fontWeight: 700 }}>
               {subsystemState.api.latencyMs != null ? `${subsystemState.api.latencyMs}ms latency` : 'Active'}
@@ -330,7 +330,7 @@ export default function SystemHealth({ setPage }) {
         {/* CARD B: MONGODB */}
         <div className="panel" style={{ padding: '16px 18px', borderLeft: `4px solid ${dbConnected ? '#3ee2a2' : '#ff4d6d'}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8e9ab1' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)' }}>
               MongoDB Database
             </span>
             <Database style={{ width: 16, color: dbConnected ? '#3ee2a2' : '#ff4d6d' }} />
@@ -338,9 +338,9 @@ export default function SystemHealth({ setPage }) {
           <strong style={{ display: 'block', fontSize: 20, letterSpacing: '-0.02em', color: dbConnected ? '#3ee2a2' : '#ff4d6d', lineHeight: 1.2 }}>
             {dbConnected ? 'CONNECTED' : 'DISCONNECTED'}
           </strong>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, fontSize: 10, color: '#64748b' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, fontSize: 10, color: 'var(--muted)' }}>
             <span>db: {subsystemState.database.databaseName}</span>
-            <span style={{ fontSize: 8, fontWeight: 800, padding: '2px 5px', borderRadius: 4, background: dbConnected ? '#132c23' : '#331a24', color: dbConnected ? '#3ee2a2' : '#ff4d6d' }}>
+            <span style={{ fontSize: 8, fontWeight: 800, padding: '2px 5px', borderRadius: 4, background: dbConnected ? 'var(--tag-real-bg)' : 'rgba(255, 77, 109, 0.12)', color: dbConnected ? 'var(--tag-real-color)' : 'var(--red)', border: `1px solid ${dbConnected ? 'var(--tag-real-border)' : 'rgba(255, 77, 109, 0.3)'}` }}>
               READY STATE {subsystemState.database.readyState}
             </span>
           </div>
@@ -349,7 +349,7 @@ export default function SystemHealth({ setPage }) {
         {/* CARD C: EVENT INGESTION */}
         <div className="panel" style={{ padding: '16px 18px', borderLeft: `4px solid ${!subsystemState.candidates.error ? '#60a5fa' : '#ff4d6d'}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8e9ab1' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)' }}>
               Event Ingestion
             </span>
             <Radio style={{ width: 16, color: !subsystemState.candidates.error ? '#60a5fa' : '#ff4d6d' }} />
@@ -357,7 +357,7 @@ export default function SystemHealth({ setPage }) {
           <strong style={{ display: 'block', fontSize: 20, letterSpacing: '-0.02em', color: !subsystemState.candidates.error ? '#60a5fa' : '#ff4d6d', lineHeight: 1.2 }}>
             {!subsystemState.candidates.error ? 'READY' : 'DEGRADED'}
           </strong>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, fontSize: 10, color: '#64748b' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, fontSize: 10, color: 'var(--muted)' }}>
             <span>{subsystemState.candidates.count} Ingested</span>
             <span>{subsystemState.candidates.pending} Pending Promotion</span>
           </div>
@@ -366,7 +366,7 @@ export default function SystemHealth({ setPage }) {
         {/* CARD D: EVIDENCE STORAGE */}
         <div className="panel" style={{ padding: '16px 18px', borderLeft: `4px solid ${isDriveAuth ? '#3ee2a2' : subsystemState.evidence.configured ? '#ffb42d' : '#8e9ab1'}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#8e9ab1' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--muted)' }}>
               Evidence Storage
             </span>
             <HardDrive style={{ width: 16, color: isDriveAuth ? '#3ee2a2' : '#ffb42d' }} />
@@ -374,7 +374,7 @@ export default function SystemHealth({ setPage }) {
           <strong style={{ display: 'block', fontSize: 18, letterSpacing: '-0.02em', color: isDriveAuth ? '#3ee2a2' : '#ffb42d', lineHeight: 1.3 }}>
             {isDriveAuth ? 'AUTHENTICATED' : subsystemState.evidence.configured ? 'STANDBY — REAUTH' : 'LOCAL ONLY'}
           </strong>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, fontSize: 10, color: '#64748b' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, fontSize: 10, color: 'var(--muted)' }}>
             <span>Google Drive Storage</span>
             <span style={{ color: '#cbd5e1' }}>{subsystemState.evidence.localClipsCount} clips</span>
           </div>
@@ -387,77 +387,77 @@ export default function SystemHealth({ setPage }) {
         
         {/* PANEL: DATA FRESHNESS AUDIT */}
         <div className="panel" style={{ padding: 18 }}>
-          <div className="panel-head" style={{ borderBottom: '1px solid #1c2431', paddingBottom: 12, marginBottom: 14 }}>
+          <div className="panel-head" style={{ borderBottom: '1px solid var(--line)', paddingBottom: 12, marginBottom: 14 }}>
             <div>
               <p className="eyebrow" style={{ margin: 0 }}>TIMELINESS &amp; LATENCY</p>
-              <h3 style={{ margin: '4px 0 0', fontSize: 14, color: '#fff' }}>Central Pipeline Data Freshness</h3>
+              <h3 style={{ margin: '4px 0 0', fontSize: 14, color: 'var(--text)' }}>Central Pipeline Data Freshness</h3>
             </div>
             <Activity style={{ width: 18, color: '#3ee2a2' }} />
           </div>
 
           <div style={{ display: 'grid', gap: 10 }}>
             {/* Item 1: Last Candidate Received */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#090d14', border: '1px solid #151d2a', borderRadius: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: 8 }}>
               <div>
-                <b style={{ display: 'block', fontSize: 11, color: '#f1f5f9' }}>Last Candidate Received (Ingestion)</b>
+                <b style={{ display: 'block', fontSize: 11, color: 'var(--text)' }}>Last Candidate Received (Ingestion)</b>
                 <small style={{ color: '#7f8ca3', fontSize: 9 }}>Most recent Edge event registered in Central MongoDB buffer</small>
               </div>
               <div style={{ textAlign: 'right' }}>
                 {freshness.lastCandidateReceived ? (
                   <>
                     <b style={{ display: 'block', fontSize: 11, color: '#60a5fa' }}>{timeAgo(freshness.lastCandidateReceived)}</b>
-                    <small style={{ fontSize: 9, color: '#64748b' }}>{formatTimestamp(freshness.lastCandidateReceived)}</small>
+                    <small style={{ fontSize: 9, color: 'var(--muted)' }}>{formatTimestamp(freshness.lastCandidateReceived)}</small>
                   </>
                 ) : (
-                  <span style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>No candidates ingested</span>
+                  <span style={{ fontSize: 11, color: 'var(--muted)', fontStyle: 'italic' }}>No candidates ingested</span>
                 )}
               </div>
             </div>
 
             {/* Item 2: Latest Fleet Detection */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#090d14', border: '1px solid #151d2a', borderRadius: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: 8 }}>
               <div>
-                <b style={{ display: 'block', fontSize: 11, color: '#f1f5f9' }}>Latest Fleet Detection (Telemetry)</b>
+                <b style={{ display: 'block', fontSize: 11, color: 'var(--text)' }}>Latest Fleet Detection (Telemetry)</b>
                 <small style={{ color: '#7f8ca3', fontSize: 9 }}>Timestamp recorded on Edge vehicle hardware when defect observed</small>
               </div>
               <div style={{ textAlign: 'right' }}>
                 {freshness.latestFleetDetection ? (
                   <>
                     <b style={{ display: 'block', fontSize: 11, color: '#ffb42d' }}>{timeAgo(freshness.latestFleetDetection)}</b>
-                    <small style={{ fontSize: 9, color: '#64748b' }}>{formatTimestamp(freshness.latestFleetDetection)}</small>
+                    <small style={{ fontSize: 9, color: 'var(--muted)' }}>{formatTimestamp(freshness.latestFleetDetection)}</small>
                   </>
                 ) : (
-                  <span style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>No fleet detections</span>
+                  <span style={{ fontSize: 11, color: 'var(--muted)', fontStyle: 'italic' }}>No fleet detections</span>
                 )}
               </div>
             </div>
 
             {/* Item 3: Last Authoritative Incident Created */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#090d14', border: '1px solid #151d2a', borderRadius: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: 8 }}>
               <div>
-                <b style={{ display: 'block', fontSize: 11, color: '#f1f5f9' }}>Last Authoritative Incident Created</b>
+                <b style={{ display: 'block', fontSize: 11, color: 'var(--text)' }}>Last Authoritative Incident Created</b>
                 <small style={{ color: '#7f8ca3', fontSize: 9 }}>Most recent promoted or clustered municipal pothole document</small>
               </div>
               <div style={{ textAlign: 'right' }}>
                 {freshness.lastIncidentCreated ? (
                   <>
-                    <b style={{ display: 'block', fontSize: 11, color: '#fff' }}>{timeAgo(freshness.lastIncidentCreated)}</b>
-                    <small style={{ fontSize: 9, color: '#64748b' }}>{formatTimestamp(freshness.lastIncidentCreated)}</small>
+                    <b style={{ display: 'block', fontSize: 11, color: 'var(--text)' }}>{timeAgo(freshness.lastIncidentCreated)}</b>
+                    <small style={{ fontSize: 9, color: 'var(--muted)' }}>{formatTimestamp(freshness.lastIncidentCreated)}</small>
                   </>
                 ) : (
-                  <span style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>No incidents created</span>
+                  <span style={{ fontSize: 11, color: 'var(--muted)', fontStyle: 'italic' }}>No incidents created</span>
                 )}
               </div>
             </div>
 
             {/* Item 4: Last Promotion */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#090d14', border: '1px solid #151d2a', borderRadius: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: 8 }}>
               <div>
-                <b style={{ display: 'block', fontSize: 11, color: '#f1f5f9' }}>Last Spatial Promotion</b>
+                <b style={{ display: 'block', fontSize: 11, color: 'var(--text)' }}>Last Spatial Promotion</b>
                 <small style={{ color: '#7f8ca3', fontSize: 9 }}>10m Haversine fusion promotion execution timestamp</small>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>
+                <span style={{ fontSize: 11, color: 'var(--muted)', fontStyle: 'italic' }}>
                   {freshness.lastPromotion ? formatTimestamp(freshness.lastPromotion) : 'No promotion recorded'}
                 </span>
               </div>
@@ -467,35 +467,35 @@ export default function SystemHealth({ setPage }) {
 
         {/* PANEL: PIPELINE QUEUE & PROCESSING BALANCE */}
         <div className="panel" style={{ padding: 18 }}>
-          <div className="panel-head" style={{ borderBottom: '1px solid #1c2431', paddingBottom: 12, marginBottom: 14 }}>
+          <div className="panel-head" style={{ borderBottom: '1px solid var(--line)', paddingBottom: 12, marginBottom: 14 }}>
             <div>
               <p className="eyebrow" style={{ margin: 0 }}>WORKFLOW BALANCE</p>
-              <h3 style={{ margin: '4px 0 0', fontSize: 14, color: '#fff' }}>Central Pipeline Processing Balance</h3>
+              <h3 style={{ margin: '4px 0 0', fontSize: 14, color: 'var(--text)' }}>Central Pipeline Processing Balance</h3>
             </div>
             <Layers style={{ width: 18, color: '#60a5fa' }} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
-            <div style={{ background: '#090d14', border: '1px solid #1c2431', borderRadius: 8, padding: '12px 10px', textAlign: 'center' }}>
+            <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: 8, padding: '12px 10px', textAlign: 'center' }}>
               <span style={{ display: 'block', fontSize: 9, color: '#c4b5fd', marginBottom: 2 }}>Total Candidates</span>
               <b style={{ fontSize: 20, color: '#c4b5fd' }}>{pipelineBalance.total}</b>
-              <small style={{ display: 'block', fontSize: 8, color: '#64748b' }}>Ingested Queue</small>
+              <small style={{ display: 'block', fontSize: 8, color: 'var(--muted)' }}>Ingested Queue</small>
             </div>
 
-            <div style={{ background: '#090d14', border: '1px solid #1c2431', borderRadius: 8, padding: '12px 10px', textAlign: 'center' }}>
+            <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: 8, padding: '12px 10px', textAlign: 'center' }}>
               <span style={{ display: 'block', fontSize: 9, color: '#ffb42d', marginBottom: 2 }}>Pending Promotion</span>
               <b style={{ fontSize: 20, color: '#ffb42d' }}>{pipelineBalance.pending}</b>
-              <small style={{ display: 'block', fontSize: 8, color: '#64748b' }}>Buffer Backlog</small>
+              <small style={{ display: 'block', fontSize: 8, color: 'var(--muted)' }}>Buffer Backlog</small>
             </div>
 
-            <div style={{ background: '#090d14', border: '1px solid #1c2431', borderRadius: 8, padding: '12px 10px', textAlign: 'center' }}>
+            <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: 8, padding: '12px 10px', textAlign: 'center' }}>
               <span style={{ display: 'block', fontSize: 9, color: '#3ee2a2', marginBottom: 2 }}>Promoted</span>
               <b style={{ fontSize: 20, color: '#3ee2a2' }}>{pipelineBalance.promoted}</b>
-              <small style={{ display: 'block', fontSize: 8, color: '#64748b' }}>Fused Incidents</small>
+              <small style={{ display: 'block', fontSize: 8, color: 'var(--muted)' }}>Fused Incidents</small>
             </div>
           </div>
 
-          <div style={{ padding: '12px 14px', background: '#080c12', borderRadius: 6, border: '1px solid #151d2a', fontSize: 10, color: '#8e9ab1', lineHeight: 1.5 }}>
+          <div style={{ padding: '12px 14px', background: 'var(--panel2)', borderRadius: 6, border: '1px solid var(--line)', fontSize: 10, color: 'var(--muted)', lineHeight: 1.5 }}>
             <Info style={{ width: 12, display: 'inline', verticalAlign: 'text-bottom', marginRight: 4, color: '#60a5fa' }} />
             Candidate events remain in the canonical <code style={{ color: '#c4b5fd' }}>candidate_events</code> buffer until evaluated and promoted into the authoritative <code style={{ color: '#3ee2a2' }}>potholes</code> store via 10m Haversine deduplication.
           </div>
@@ -508,55 +508,55 @@ export default function SystemHealth({ setPage }) {
         
         {/* PANEL: CENTRAL PIPELINE SERVICES */}
         <div className="panel" style={{ padding: 18 }}>
-          <div className="panel-head" style={{ borderBottom: '1px solid #1c2431', paddingBottom: 12, marginBottom: 14 }}>
+          <div className="panel-head" style={{ borderBottom: '1px solid var(--line)', paddingBottom: 12, marginBottom: 14 }}>
             <div>
               <p className="eyebrow" style={{ margin: 0 }}>SERVICE STATUS</p>
-              <h3 style={{ margin: '4px 0 0', fontSize: 14, color: '#fff' }}>Central Pipeline Services</h3>
+              <h3 style={{ margin: '4px 0 0', fontSize: 14, color: 'var(--text)' }}>Central Pipeline Services</h3>
             </div>
             <ShieldCheck style={{ width: 18, color: '#3ee2a2' }} />
           </div>
 
           <div style={{ display: 'grid', gap: 8 }}>
             {/* Service 1 */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', background: '#090d14', border: '1px solid #151d2a', borderRadius: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: 6 }}>
               <div>
-                <b style={{ fontSize: 11, color: '#f1f5f9' }}>Candidate Ingestion Service</b>
+                <b style={{ fontSize: 11, color: 'var(--text)' }}>Candidate Ingestion Service</b>
                 <small style={{ display: 'block', fontSize: 8, color: '#7f8ca3' }}>REST receiver at /api/central/events</small>
               </div>
-              <span style={{ fontSize: 9, fontWeight: 800, padding: '3px 8px', borderRadius: 99, background: '#132c23', color: '#3ee2a2', border: '1px solid #205b49' }}>
+              <span style={{ fontSize: 9, fontWeight: 800, padding: '3px 8px', borderRadius: 99, background: 'var(--tag-real-bg)', color: 'var(--tag-real-color)', border: '1px solid var(--tag-real-border)' }}>
                 OPERATIONAL
               </span>
             </div>
 
             {/* Service 2 */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', background: '#090d14', border: '1px solid #151d2a', borderRadius: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: 6 }}>
               <div>
-                <b style={{ fontSize: 11, color: '#f1f5f9' }}>10m Spatial Promotion Engine</b>
+                <b style={{ fontSize: 11, color: 'var(--text)' }}>10m Spatial Promotion Engine</b>
                 <small style={{ display: 'block', fontSize: 8, color: '#7f8ca3' }}>Bridge to authoritative incident collection</small>
               </div>
-              <span style={{ fontSize: 9, fontWeight: 800, padding: '3px 8px', borderRadius: 99, background: '#132c23', color: '#3ee2a2', border: '1px solid #205b49' }}>
+              <span style={{ fontSize: 9, fontWeight: 800, padding: '3px 8px', borderRadius: 99, background: 'var(--tag-real-bg)', color: 'var(--tag-real-color)', border: '1px solid var(--tag-real-border)' }}>
                 OPERATIONAL
               </span>
             </div>
 
             {/* Service 3 */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', background: '#090d14', border: '1px solid #151d2a', borderRadius: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: 6 }}>
               <div>
-                <b style={{ fontSize: 11, color: '#f1f5f9' }}>Authoritative Incident Store</b>
+                <b style={{ fontSize: 11, color: 'var(--text)' }}>Authoritative Incident Store</b>
                 <small style={{ display: 'block', fontSize: 8, color: '#7f8ca3' }}>MongoDB potholes collection &amp; deduplication index</small>
               </div>
-              <span style={{ fontSize: 9, fontWeight: 800, padding: '3px 8px', borderRadius: 99, background: dbConnected ? '#132c23' : '#331a24', color: dbConnected ? '#3ee2a2' : '#ff4d6d', border: `1px solid ${dbConnected ? '#205b49' : '#5b2030'}` }}>
+              <span style={{ fontSize: 9, fontWeight: 800, padding: '3px 8px', borderRadius: 99, background: dbConnected ? 'var(--tag-real-bg)' : 'rgba(255, 77, 109, 0.12)', color: dbConnected ? 'var(--tag-real-color)' : 'var(--red)', border: `1px solid ${dbConnected ? 'var(--tag-real-border)' : 'rgba(255, 77, 109, 0.3)'}` }}>
                 {dbConnected ? 'OPERATIONAL' : 'OFFLINE'}
               </span>
             </div>
 
             {/* Service 4 */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', background: '#090d14', border: '1px solid #151d2a', borderRadius: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 12px', background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: 6 }}>
               <div>
-                <b style={{ fontSize: 11, color: '#f1f5f9' }}>Evidence Storage Service</b>
+                <b style={{ fontSize: 11, color: 'var(--text)' }}>Evidence Storage Service</b>
                 <small style={{ display: 'block', fontSize: 8, color: '#7f8ca3' }}>Google Drive &amp; Local Clip Streaming</small>
               </div>
-              <span style={{ fontSize: 9, fontWeight: 800, padding: '3px 8px', borderRadius: 99, background: isDriveAuth ? '#132c23' : '#332914', color: isDriveAuth ? '#3ee2a2' : '#ffb42d', border: `1px solid ${isDriveAuth ? '#205b49' : '#5b4720'}` }}>
+              <span style={{ fontSize: 9, fontWeight: 800, padding: '3px 8px', borderRadius: 99, background: isDriveAuth ? 'var(--tag-real-bg)' : 'var(--tag-demo-bg)', color: isDriveAuth ? 'var(--tag-real-color)' : 'var(--tag-demo-color)', border: `1px solid ${isDriveAuth ? 'var(--tag-real-border)' : 'var(--tag-demo-border)'}` }}>
                 {isDriveAuth ? 'OPERATIONAL' : 'STANDBY'}
               </span>
             </div>
@@ -565,51 +565,51 @@ export default function SystemHealth({ setPage }) {
 
         {/* PANEL: SUBSYSTEM AUDIT DETAILS (GRID OF 3 BOXES) */}
         <div className="panel" style={{ padding: 18 }}>
-          <div className="panel-head" style={{ borderBottom: '1px solid #1c2431', paddingBottom: 12, marginBottom: 14 }}>
+          <div className="panel-head" style={{ borderBottom: '1px solid var(--line)', paddingBottom: 12, marginBottom: 14 }}>
             <div>
               <p className="eyebrow" style={{ margin: 0 }}>DIAGNOSTICS</p>
-              <h3 style={{ margin: '4px 0 0', fontSize: 14, color: '#fff' }}>Subsystem Diagnostics</h3>
+              <h3 style={{ margin: '4px 0 0', fontSize: 14, color: 'var(--text)' }}>Subsystem Diagnostics</h3>
             </div>
             <Zap style={{ width: 18, color: '#ffb42d' }} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, fontSize: 11 }}>
             {/* Box 1: MongoDB Details */}
-            <div style={{ background: '#090d14', border: '1px solid #151d2a', borderRadius: 8, padding: 12 }}>
+            <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: 8, padding: 12 }}>
               <span style={{ fontSize: 9, fontWeight: 800, color: '#3ee2a2', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>
                 MongoDB Configuration
               </span>
-              <div style={{ display: 'grid', gap: 5, color: '#8e9ab1' }}>
+              <div style={{ display: 'grid', gap: 5, color: 'var(--muted)' }}>
                 <div>Status: <b style={{ color: dbConnected ? '#3ee2a2' : '#ff4d6d' }}>{dbConnected ? 'Active' : 'Offline'}</b></div>
-                <div>Database: <b style={{ color: '#fff' }}>{subsystemState.database.databaseName}</b></div>
-                <div>Host: <b style={{ color: '#fff' }}>{subsystemState.database.host}:{subsystemState.database.port}</b></div>
-                <div>Mongoose ReadyState: <b style={{ color: '#fff' }}>{subsystemState.database.readyState}</b></div>
-                <div>Timeout: <b style={{ color: '#fff' }}>5000ms</b></div>
+                <div>Database: <b style={{ color: 'var(--text)' }}>{subsystemState.database.databaseName}</b></div>
+                <div>Host: <b style={{ color: 'var(--text)' }}>{subsystemState.database.host}:{subsystemState.database.port}</b></div>
+                <div>Mongoose ReadyState: <b style={{ color: 'var(--text)' }}>{subsystemState.database.readyState}</b></div>
+                <div>Timeout: <b style={{ color: 'var(--text)' }}>5000ms</b></div>
               </div>
             </div>
 
             {/* Box 2: Evidence Cloud Sync */}
-            <div style={{ background: '#090d14', border: '1px solid #151d2a', borderRadius: 8, padding: 12 }}>
+            <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: 8, padding: 12 }}>
               <span style={{ fontSize: 9, fontWeight: 800, color: '#ffb42d', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>
                 Evidence Storage
               </span>
-              <div style={{ display: 'grid', gap: 5, color: '#8e9ab1' }}>
+              <div style={{ display: 'grid', gap: 5, color: 'var(--muted)' }}>
                 <div>Google Drive: <b style={{ color: isDriveAuth ? '#3ee2a2' : '#ffb42d' }}>{isDriveAuth ? 'Authenticated' : 'Pending'}</b></div>
-                <div>Target Folder: <b style={{ color: '#fff' }}>{subsystemState.evidence.folderName}</b></div>
-                <div>Local Clips Cache: <b style={{ color: '#fff' }}>{subsystemState.evidence.localClipsCount} clips</b></div>
-                <div>Evidence Path: <b style={{ color: '#fff' }}>videos/evidence</b></div>
+                <div>Target Folder: <b style={{ color: 'var(--text)' }}>{subsystemState.evidence.folderName}</b></div>
+                <div>Local Clips Cache: <b style={{ color: 'var(--text)' }}>{subsystemState.evidence.localClipsCount} clips</b></div>
+                <div>Evidence Path: <b style={{ color: 'var(--text)' }}>videos/evidence</b></div>
               </div>
             </div>
 
             {/* Box 3: Authoritative Metrics */}
-            <div style={{ background: '#090d14', border: '1px solid #151d2a', borderRadius: 8, padding: 12 }}>
+            <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: 8, padding: 12 }}>
               <span style={{ fontSize: 9, fontWeight: 800, color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>
                 Authoritative Incident Store
               </span>
-              <div style={{ display: 'grid', gap: 5, color: '#8e9ab1' }}>
-                <div>Total Incidents: <b style={{ color: '#fff' }}>{subsystemState.potholeStats.total || subsystemState.potholes.count}</b></div>
+              <div style={{ display: 'grid', gap: 5, color: 'var(--muted)' }}>
+                <div>Total Incidents: <b style={{ color: 'var(--text)' }}>{subsystemState.potholeStats.total || subsystemState.potholes.count}</b></div>
                 <div>Open Hazards: <b style={{ color: '#ff4d6d' }}>{subsystemState.potholeStats.open}</b></div>
-                <div>Ignored / Filtered: <b style={{ color: '#8e9ab1' }}>{subsystemState.potholeStats.ignored}</b></div>
+                <div>Ignored / Filtered: <b style={{ color: 'var(--muted)' }}>{subsystemState.potholeStats.ignored}</b></div>
                 <div>Cluster Deduplication: <b style={{ color: '#3ee2a2' }}>Active (10m)</b></div>
               </div>
             </div>
@@ -622,7 +622,7 @@ export default function SystemHealth({ setPage }) {
       <div className="panel" style={{ padding: 16, marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
           <Info style={{ width: 16, color: '#c4b5fd' }} />
-          <h4 style={{ margin: 0, fontSize: 12, color: '#fff' }}>Operational Advisories &amp; Configuration State</h4>
+          <h4 style={{ margin: 0, fontSize: 12, color: 'var(--text)' }}>Operational Advisories &amp; Configuration State</h4>
         </div>
 
         <div style={{ display: 'grid', gap: 8 }}>
@@ -631,7 +631,7 @@ export default function SystemHealth({ setPage }) {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', background: 'rgba(59, 140, 255, 0.08)', border: '1px solid rgba(59, 140, 255, 0.25)', borderRadius: 6, fontSize: 11, color: '#93c5fd' }}>
               <Radio style={{ width: 16, flexShrink: 0, marginTop: 1, color: '#60a5fa' }} />
               <div>
-                <b style={{ display: 'block', color: '#f1f5f9', marginBottom: 2 }}>Ingestion Queue Idle</b>
+                <b style={{ display: 'block', color: 'var(--text)', marginBottom: 2 }}>Ingestion Queue Idle</b>
                 No raw candidate event packages have been ingested into the <code style={{ color: '#93c5fd' }}>candidate_events</code> collection. Incoming packages from RAAHI-Edge via <code style={{ color: '#93c5fd' }}>POST /api/central/events</code> will automatically register in the queue.
               </div>
             </div>
@@ -641,7 +641,7 @@ export default function SystemHealth({ setPage }) {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', background: 'rgba(62, 226, 162, 0.08)', border: '1px solid rgba(62, 226, 162, 0.25)', borderRadius: 6, fontSize: 11, color: '#a7f3d0' }}>
             <CheckCircle2 style={{ width: 16, flexShrink: 0, marginTop: 1, color: '#3ee2a2' }} />
             <div>
-              <b style={{ display: 'block', color: '#f1f5f9', marginBottom: 2 }}>Central Database Ready</b>
+              <b style={{ display: 'block', color: 'var(--text)', marginBottom: 2 }}>Central Database Ready</b>
               MongoDB is connected at <code style={{ color: '#a7f3d0' }}>{subsystemState.database.host}:{subsystemState.database.port}/{subsystemState.database.databaseName}</code> with 10m spatial clustering indices active.
             </div>
           </div>

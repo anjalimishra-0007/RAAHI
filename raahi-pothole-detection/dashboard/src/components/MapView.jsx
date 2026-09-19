@@ -87,7 +87,17 @@ export default function MapView({
     }).addTo(map);
     instanceRef.current = map;
     setTimeout(() => map.invalidateSize(), 150);
+
+    const handleWindowResize = () => {
+      if (instanceRef.current) {
+        instanceRef.current.invalidateSize();
+      }
+    };
+    window.addEventListener('resize', handleWindowResize);
+    window.addEventListener('orientationchange', handleWindowResize);
     return () => {
+      window.removeEventListener('resize', handleWindowResize);
+      window.removeEventListener('orientationchange', handleWindowResize);
       map.remove();
       instanceRef.current = null;
     };
@@ -340,7 +350,7 @@ export default function MapView({
         {isCentral ? (
           // CENTRAL AUTHORITATIVE LEGEND
           <div className="map-legend-pills">
-            <span style={{ fontWeight: 800, color: '#e2e8f0', marginRight: '4px', letterSpacing: '0.04em' }}>
+            <span style={{ fontWeight: 800, color: 'var(--text)', marginRight: '4px', letterSpacing: '0.04em' }}>
               AUTHORITATIVE HAZARDS:
             </span>
             <span className="map-legend-pill">
@@ -367,7 +377,7 @@ export default function MapView({
               </span>
             ) : (
               showFleet && (
-                <span style={{ color: '#8e9ab1' }}>
+                <span style={{ color: 'var(--muted)' }}>
                   <i className="dot" style={{ background: '#62718a' }} /> GPS: Not connected
                 </span>
               )

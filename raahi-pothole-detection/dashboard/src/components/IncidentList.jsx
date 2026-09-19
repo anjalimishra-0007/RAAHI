@@ -67,7 +67,7 @@ export default function IncidentList({ potholes = [], onSelect, loading = false,
             
             <span className="incident-main">
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <b style={{ color: '#fff', fontSize: '11px', letterSpacing: '0.02em' }}>{p.potholeId}</b>
+                <b style={{ color: 'var(--text)', fontSize: '11px', letterSpacing: '0.02em' }}>{p.potholeId}</b>
                 {hasEvidence && (
                   <span
                     style={{

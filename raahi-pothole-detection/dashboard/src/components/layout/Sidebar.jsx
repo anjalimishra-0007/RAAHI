@@ -1,4 +1,5 @@
 import React from 'react';
+import RaahiLogo from '../common/RaahiLogo';
 import {
   Layers3,
   Siren,
@@ -8,134 +9,141 @@ import {
   BusFront,
   Smartphone,
   Camera,
-  Settings
+  Settings,
+  X
 } from 'lucide-react';
 
-/**
- * Sidebar Navigation Component
- *
- * Visually and architecturally separates:
- * 1. CENTRAL COMMAND (Core authoritative incident ops, candidates, analytics, system health)
- * 2. EDGE / TESTING (Simulation fleet, phone GPS & phone camera streams)
- * 3. CONFIGURATION (Settings)
- */
 export default function Sidebar({
   page,
   setPage,
   menuOpen,
+  setMenuOpen,
   openIncidentsCount = 0,
   systemStatus = {}
 }) {
+  const handleNav = (targetPage) => {
+    setPage(targetPage);
+    if (typeof setMenuOpen === 'function') {
+      setMenuOpen(false);
+    }
+  };
+
   return (
-    <aside className={`sidebar ${menuOpen ? 'open' : ''}`}>
+    <aside className={`sidebar ${menuOpen ? 'open' : ''}`} aria-label="Main navigation">
       <div className="brand">
-        <div className="brand-mark">
-          <span></span>
-          <span></span>
-        </div>
-        <div>
+        <RaahiLogo size="md" />
+        <div className="brand-text">
           <h1>RAAHI</h1>
           <p>Safer Roads. Brighter Journeys.</p>
         </div>
+        {/* Mobile close button */}
+        <button
+          className="sidebar-close-btn icon-btn"
+          onClick={() => typeof setMenuOpen === 'function' && setMenuOpen(false)}
+          title="Close navigation drawer"
+          aria-label="Close navigation drawer"
+        >
+          <X style={{ width: 18, height: 18 }} />
+        </button>
       </div>
 
       <nav>
-        {/* ============================================================ */}
-        {/* SECTION: CENTRAL COMMAND                                     */}
-        {/* ============================================================ */}
         <div className="nav-section-label">CENTRAL COMMAND</div>
 
         <button
           className={page === 'overview' ? 'active' : ''}
-          onClick={() => setPage('overview')}
+          onClick={() => handleNav('overview')}
+          title="Command Center"
         >
-          <Layers3 /> Command Center
+          <Layers3 /> <span className="nav-label">Command Center</span>
         </button>
 
         <button
           className={page === 'incidents' ? 'active' : ''}
-          onClick={() => setPage('incidents')}
+          onClick={() => handleNav('incidents')}
+          title="Authoritative Incidents"
         >
-          <Siren /> Authoritative Incidents <em>{openIncidentsCount}</em>
+          <Siren /> <span className="nav-label">Authoritative Incidents</span>
+          <em>{openIncidentsCount}</em>
         </button>
 
         <button
           className={page === 'candidates' ? 'active' : ''}
-          onClick={() => setPage('candidates')}
+          onClick={() => handleNav('candidates')}
           title="Candidate Events Ingestion & Promotion Pipeline"
         >
-          <Radio style={{ color: page === 'candidates' ? '#9b6cff' : '#a78bfa' }} />
-          Candidate Pipeline
+          <Radio style={{ color: page === 'candidates' ? 'var(--purple)' : '#a78bfa' }} />
+          <span className="nav-label">Candidate Pipeline</span>
         </button>
 
         <button
           className={page === 'analytics' ? 'active' : ''}
-          onClick={() => setPage('analytics')}
+          onClick={() => handleNav('analytics')}
+          title="Analytics & Fusion"
         >
-          <TrendingUp /> Analytics &amp; Fusion
+          <TrendingUp /> <span className="nav-label">Analytics &amp; Fusion</span>
         </button>
 
         <button
           className={page === 'health' ? 'active' : ''}
-          onClick={() => setPage('health')}
+          onClick={() => handleNav('health')}
+          title="System Health"
         >
-          <Activity /> System Health
+          <Activity /> <span className="nav-label">System Health</span>
         </button>
 
-        {/* ============================================================ */}
-        {/* SECTION: EDGE & TESTING                                      */}
-        {/* ============================================================ */}
         <div className="nav-section-label" style={{ marginTop: '12px' }}>
           EDGE / TESTING
         </div>
 
         <button
           className={page === 'buses' ? 'active' : ''}
-          onClick={() => setPage('buses')}
+          onClick={() => handleNav('buses')}
+          title="Fleet (Demo)"
         >
-          <BusFront /> Fleet <span className="demo-tag">DEMO</span>
+          <BusFront /> <span className="nav-label">Fleet <span className="demo-tag">DEMO</span></span>
         </button>
 
         <button
           className={page === 'gps' ? 'active' : ''}
-          onClick={() => setPage('gps')}
-          style={{ color: page === 'gps' ? '#00ffc4' : '#38bdf8' }}
+          onClick={() => handleNav('gps')}
+          title="Phone GPS Sender"
+          style={{ color: page === 'gps' ? 'var(--green)' : 'var(--cyan)' }}
         >
-          <Smartphone /> Phone GPS
+          <Smartphone /> <span className="nav-label">Phone GPS</span>
         </button>
 
         <button
           className={page === 'camera' ? 'active' : ''}
-          onClick={() => setPage('camera')}
-          style={{ color: page === 'camera' ? '#ff496c' : '#38bdf8' }}
+          onClick={() => handleNav('camera')}
+          title="Phone Camera Streamer"
+          style={{ color: page === 'camera' ? 'var(--red)' : 'var(--cyan)' }}
         >
-          <Camera /> Phone Camera
+          <Camera /> <span className="nav-label">Phone Camera</span>
         </button>
 
-        {/* ============================================================ */}
-        {/* SECTION: CONFIGURATION                                       */}
-        {/* ============================================================ */}
         <div className="nav-section-label" style={{ marginTop: '12px' }}>
           CONFIGURATION
         </div>
 
         <button
           className={page === 'settings' ? 'active' : ''}
-          onClick={() => setPage('settings')}
+          onClick={() => handleNav('settings')}
+          title="System Configuration"
         >
-          <Settings /> Settings
+          <Settings /> <span className="nav-label">Settings</span>
         </button>
       </nav>
 
       <div className="sidebar-bottom">
-        <div className="system">
+        <div className="system" title="Central Platform • Active (Spatial Fusion & Ingestion)">
           <span className="online-dot"></span>
-          <div>
+          <div className="system-text">
             <b>Central Platform • Active</b>
             <small>Spatial Fusion & Ingestion</small>
           </div>
         </div>
-        <small>RAAHI Central Command • v1.0</small>
+        <small className="version-tag">RAAHI Central Command • v1.0</small>
       </div>
     </aside>
   );

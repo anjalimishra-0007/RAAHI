@@ -115,7 +115,7 @@ export default function GpsSender({ onBack }) {
       flexDirection: 'column',
       gap: '16px',
       fontFamily: 'Inter, system-ui, sans-serif',
-      color: '#e2e8f0'
+      color: 'var(--text)'
     }}>
       {/* Top Bar with Back Button */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -125,7 +125,7 @@ export default function GpsSender({ onBack }) {
             style={{
               background: 'rgba(255,255,255,0.06)',
               border: '1px solid rgba(255,255,255,0.12)',
-              color: '#94a3b8',
+              color: 'var(--muted)',
               borderRadius: '8px',
               padding: '8px 14px',
               fontSize: '13px',
@@ -142,7 +142,7 @@ export default function GpsSender({ onBack }) {
           fontSize: '11px',
           fontWeight: 700,
           letterSpacing: '0.08em',
-          color: '#64748b',
+          color: 'var(--muted)',
           textTransform: 'uppercase'
         }}>
           RAAHI Telemetry v1.0
@@ -170,10 +170,10 @@ export default function GpsSender({ onBack }) {
         }}>
           <Navigation size={28} />
         </div>
-        <h1 style={{ margin: '0 0 6px 0', fontSize: '24px', fontWeight: 800, color: '#f8fafc' }}>
+        <h1 style={{ margin: '0 0 6px 0', fontSize: '24px', fontWeight: 800, color: 'var(--text)' }}>
           RAAHI GPS Sender
         </h1>
-        <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8' }}>
+        <p style={{ margin: 0, fontSize: '13px', color: 'var(--muted)' }}>
           Continuous mobile GPS transmitter over local Wi-Fi
         </p>
 
@@ -240,7 +240,7 @@ export default function GpsSender({ onBack }) {
           <p style={{ margin: '0 0 6px 0' }}>
             Modern mobile browsers (iOS Safari, Android Chrome) require a <b>Secure Context</b> (HTTPS or localhost) for <code style={{ color: '#ffb020' }}>navigator.geolocation</code>.
           </p>
-          <p style={{ margin: 0, color: '#94a3b8' }}>
+          <p style={{ margin: 0, color: 'var(--muted)' }}>
             • <b>Android Chrome</b>: Open <code style={{ color: '#00ffc4' }}>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code> and add your Mac IP (e.g. <code style={{ color: '#00ffc4' }}>http://10.134.43.134:5173</code>), then relaunch.<br />
             • <b>Local HTTPS</b>: Run Vite with HTTPS enabled (<code style={{ color: '#00ffc4' }}>npm run dev -- --https</code>) and access via <code style={{ color: '#00ffc4' }}>https://...</code>.
           </p>
@@ -322,52 +322,48 @@ export default function GpsSender({ onBack }) {
       }}>
         {/* Latitude Card */}
         <div style={{
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: '12px',
+          background: 'var(--panel2)', border: '1px solid var(--line)',
+                    borderRadius: '12px',
           padding: '14px'
         }}>
-          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Latitude</div>
-          <div style={{ fontSize: '18px', fontWeight: 800, color: telemetry ? '#38bdf8' : '#475569', marginTop: '4px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase' }}>Latitude</div>
+          <div style={{ fontSize: '18px', fontWeight: 800, color: telemetry ? 'var(--blue)' : 'var(--muted)', marginTop: '4px' }}>
             {telemetry ? telemetry.latitude.toFixed(6) : '— — —'}
           </div>
         </div>
 
         {/* Longitude Card */}
         <div style={{
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: '12px',
+          background: 'var(--panel2)', border: '1px solid var(--line)',
+                    borderRadius: '12px',
           padding: '14px'
         }}>
-          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Longitude</div>
-          <div style={{ fontSize: '18px', fontWeight: 800, color: telemetry ? '#38bdf8' : '#475569', marginTop: '4px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase' }}>Longitude</div>
+          <div style={{ fontSize: '18px', fontWeight: 800, color: telemetry ? 'var(--blue)' : 'var(--muted)', marginTop: '4px' }}>
             {telemetry ? telemetry.longitude.toFixed(6) : '— — —'}
           </div>
         </div>
 
         {/* Accuracy Card */}
         <div style={{
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: '12px',
+          background: 'var(--panel2)', border: '1px solid var(--line)',
+                    borderRadius: '12px',
           padding: '14px'
         }}>
-          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Accuracy</div>
-          <div style={{ fontSize: '18px', fontWeight: 800, color: telemetry ? '#00ffc4' : '#475569', marginTop: '4px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase' }}>Accuracy</div>
+          <div style={{ fontSize: '18px', fontWeight: 800, color: telemetry ? 'var(--green)' : 'var(--muted)', marginTop: '4px' }}>
             {telemetry ? `±${telemetry.accuracy} m` : '— — —'}
           </div>
         </div>
 
         {/* Last Sent Card */}
         <div style={{
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: '12px',
+          background: 'var(--panel2)', border: '1px solid var(--line)',
+                    borderRadius: '12px',
           padding: '14px'
         }}>
-          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Last Sent</div>
-          <div style={{ fontSize: '16px', fontWeight: 700, color: lastSentTime ? '#f8fafc' : '#475569', marginTop: '4px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 600, textTransform: 'uppercase' }}>Last Sent</div>
+          <div style={{ fontSize: '16px', fontWeight: 700, color: lastSentTime ? 'var(--text)' : 'var(--muted)', marginTop: '4px' }}>
             {lastSentTime || '— — —'}
           </div>
         </div>
@@ -375,32 +371,31 @@ export default function GpsSender({ onBack }) {
 
       {/* Network & Transmission Diagnostics */}
       <div style={{
-        background: 'rgba(15, 23, 42, 0.6)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: '14px',
+        background: 'var(--panel2)', border: '1px solid var(--line)',
+                borderRadius: '14px',
         padding: '16px'
       }}>
-        <div style={{ fontSize: '12px', fontWeight: 700, color: '#94a3b8', marginBottom: '10px' }}>
+        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--muted)', marginBottom: '10px' }}>
           TRANSMISSION DIAGNOSTICS
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: '#64748b' }}>Target API Endpoint:</span>
+            <span style={{ color: 'var(--muted)' }}>Target API Endpoint:</span>
             <span style={{ color: '#38bdf8', fontFamily: 'monospace' }}>POST /api/gps</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: '#64748b' }}>Packets Transmitted:</span>
-            <span style={{ color: '#f8fafc', fontWeight: 700 }}>{packetCount}</span>
+            <span style={{ color: 'var(--muted)' }}>Packets Transmitted:</span>
+            <span style={{ color: 'var(--text)', fontWeight: 700 }}>{packetCount}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: '#64748b' }}>Backend Response:</span>
+            <span style={{ color: 'var(--muted)' }}>Backend Response:</span>
             <span style={{ color: apiStatus.includes('200') ? '#00ffc4' : apiStatus ? '#ff496c' : '#64748b', fontWeight: 600 }}>
               {apiStatus || 'Awaiting transmission'}
             </span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: '#64748b' }}>Associated Vehicle:</span>
-            <span style={{ color: '#f8fafc' }}>RAAHI-01 (Primary Bus)</span>
+            <span style={{ color: 'var(--muted)' }}>Associated Vehicle:</span>
+            <span style={{ color: 'var(--text)' }}>RAAHI-01 (Primary Bus)</span>
           </div>
         </div>
       </div>

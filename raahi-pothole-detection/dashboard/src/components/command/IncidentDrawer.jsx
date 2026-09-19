@@ -81,7 +81,7 @@ export default function IncidentDrawer({
     { key: 'open', label: 'Open', color: '#ff4d6d', bg: 'rgba(255, 77, 109, 0.12)', border: 'rgba(255, 77, 109, 0.4)' },
     { key: 'investigating', label: 'Investigating', color: '#ffb42d', bg: 'rgba(255, 180, 45, 0.12)', border: 'rgba(255, 180, 45, 0.4)' },
     { key: 'repaired', label: 'Repaired', color: '#3ee2a2', bg: 'rgba(62, 226, 162, 0.12)', border: 'rgba(62, 226, 162, 0.4)' },
-    { key: 'ignored', label: 'Ignored', color: '#8e9ab1', bg: 'rgba(142, 154, 177, 0.12)', border: 'rgba(142, 154, 177, 0.4)' }
+    { key: 'ignored', label: 'Ignored', color: 'var(--muted)', bg: 'rgba(142, 154, 177, 0.12)', border: 'rgba(142, 154, 177, 0.4)' }
   ];
 
   // Phase 6C: Bidirectional Source Candidate navigation
@@ -136,7 +136,7 @@ export default function IncidentDrawer({
           padding: '10px 14px',
           marginBottom: '16px',
           fontSize: '10px',
-          color: '#cbd5e1',
+          color: 'var(--text)',
           lineHeight: 1.45
         }}>
           <b style={{ color: '#38bdf8' }}>Authoritative Record:</b> Ingested from fleet Edge detection and fused via 10-meter geospatial clustering. This defect represents authoritative road infrastructure intelligence.
@@ -147,7 +147,7 @@ export default function IncidentDrawer({
         {/* ============================================================ */}
         {isMongoPothole && (
           <div style={{ marginBottom: '18px' }}>
-            <div style={{ fontSize: '10px', fontWeight: 800, color: '#8e9ab1', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
               Municipal Incident Status
             </div>
             <div className="status-control-grid">
@@ -158,7 +158,7 @@ export default function IncidentDrawer({
                   style={{
                     '--sc-color': opt.color,
                     '--sc-bg': status === opt.key ? opt.bg : 'transparent',
-                    '--sc-border': status === opt.key ? opt.border : '#1e2636'
+                    '--sc-border': status === opt.key ? opt.border : 'var(--line)'
                   }}
                   onClick={() => {
                     if (status !== opt.key && onStatusUpdate) {
@@ -179,14 +179,14 @@ export default function IncidentDrawer({
         {/* PART 3: INCIDENT SUMMARY                                     */}
         {/* ============================================================ */}
         <div style={{ marginBottom: '18px' }}>
-          <div style={{ fontSize: '10px', fontWeight: 800, color: '#8e9ab1', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
             Incident Summary
           </div>
-          <div style={{ background: '#0a0e16', border: '1px solid #1e2636', borderRadius: '8px', padding: '12px' }}>
+          <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: '8px', padding: '12px' }}>
             <div className="detail-grid" style={{ border: 0, padding: 0, gridTemplateColumns: '1fr 1fr' }}>
               <div>
                 <small>Incident ID</small>
-                <b style={{ color: '#fff' }}>{pId}</b>
+                <b style={{ color: 'var(--text)' }}>{pId}</b>
               </div>
               <div>
                 <small>Authoritative Classification</small>
@@ -206,7 +206,7 @@ export default function IncidentDrawer({
               </div>
               <div>
                 <small>Event Domain</small>
-                <b style={{ color: '#94a3b8' }}>{incident.eventType || 'pothole'}</b>
+                <b style={{ color: 'var(--muted)' }}>{incident.eventType || 'pothole'}</b>
               </div>
               <div>
                 <small>Cluster Size</small>
@@ -221,7 +221,7 @@ export default function IncidentDrawer({
         {/* ============================================================ */}
         <div style={{ marginBottom: '18px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#8e9ab1', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               Cross-Bus Spatial Fusion
             </span>
             <span className="demo-tag" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.35)', fontSize: '8px' }}>
@@ -229,7 +229,7 @@ export default function IncidentDrawer({
             </span>
           </div>
 
-          <div style={{ background: '#0a0e16', border: '1px solid #1e2636', borderRadius: '8px', padding: '12px' }}>
+          <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: '8px', padding: '12px' }}>
             <div className="detail-grid" style={{ border: 0, padding: 0, gridTemplateColumns: '1fr 1fr' }}>
               <div>
                 <small>Fused observations</small>
@@ -237,19 +237,19 @@ export default function IncidentDrawer({
               </div>
               <div>
                 <small>Reporting buses</small>
-                <b style={{ color: '#fff', fontSize: '11px' }}>{busesList}</b>
+                <b style={{ color: 'var(--text)', fontSize: '11px' }}>{busesList}</b>
               </div>
               <div>
                 <small>First Detected</small>
-                <b style={{ fontSize: '9px', color: '#94a3b8' }}>{firstDetected}</b>
+                <b style={{ fontSize: '9px', color: 'var(--muted)' }}>{firstDetected}</b>
               </div>
               <div>
                 <small>Latest Detection</small>
-                <b style={{ fontSize: '9px', color: '#94a3b8' }}>{lastDetected}</b>
+                <b style={{ fontSize: '9px', color: 'var(--muted)' }}>{lastDetected}</b>
               </div>
             </div>
 
-            <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #1a2230', fontSize: '9px', color: '#94a3b8', lineHeight: 1.4 }}>
+            <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--line)', fontSize: '9px', color: 'var(--muted)', lineHeight: 1.4 }}>
               Observations fused within 10m Central Haversine deduplication radius across fleet telemetry passes.
             </div>
 
@@ -266,15 +266,15 @@ export default function IncidentDrawer({
         {/* PART 5: ORIGINAL EDGE YOLO TELEMETRY                         */}
         {/* ============================================================ */}
         <div style={{ marginBottom: '18px' }}>
-          <div style={{ fontSize: '10px', fontWeight: 800, color: '#8e9ab1', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
             Original Edge YOLO Telemetry
           </div>
 
-          <div style={{ background: '#0a0e16', border: '1px solid #1e2636', borderRadius: '8px', padding: '12px' }}>
+          <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: '8px', padding: '12px' }}>
             <div className="detail-grid" style={{ border: 0, padding: 0, gridTemplateColumns: '1fr 1fr 1fr' }}>
               <div>
                 <small>Edge Model</small>
-                <b style={{ color: '#fff' }}>{incident.edgeModel || 'YOLO11n'}</b>
+                <b style={{ color: 'var(--text)' }}>{incident.edgeModel || 'YOLO11n'}</b>
               </div>
               <div>
                 <small>Original Edge Class</small>
@@ -288,7 +288,7 @@ export default function IncidentDrawer({
               </div>
               <div style={{ gridColumn: 'span 3', marginTop: '6px' }}>
                 <small>Edge Event UUID</small>
-                <b style={{ fontSize: '9px', fontFamily: 'monospace', color: '#94a3b8', wordBreak: 'break-all' }}>
+                <b style={{ fontSize: '9px', fontFamily: 'monospace', color: 'var(--muted)', wordBreak: 'break-all' }}>
                   {incident.edgeEventId || 'Not recorded'}
                 </b>
               </div>
@@ -300,11 +300,11 @@ export default function IncidentDrawer({
         {/* PART 7: SOURCE CANDIDATE RELATIONSHIP (LINEAGE)              */}
         {/* ============================================================ */}
         <div style={{ marginBottom: '18px' }}>
-          <div style={{ fontSize: '10px', fontWeight: 800, color: '#8e9ab1', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
             Source Candidate Lineage
           </div>
 
-          <div style={{ background: '#0a0e16', border: '1px solid #1e2636', borderRadius: '8px', padding: '12px' }}>
+          <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: '8px', padding: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '10px' }}>
               <div>
                 <small style={{ fontSize: '8px', color: '#69768c', display: 'block' }}>Source Candidate ID (Non-Authoritative Source)</small>
@@ -329,14 +329,14 @@ export default function IncidentDrawer({
                   <span>View Candidate</span>
                 </button>
               ) : (
-                <span style={{ fontSize: '9px', color: '#64748b' }}>No candidate link</span>
+                <span style={{ fontSize: '9px', color: 'var(--muted)' }}>No candidate link</span>
               )}
             </div>
 
             <div className="detail-grid" style={{ border: 0, padding: 0, gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               <div>
                 <small>Edge Event UUID</small>
-                <b style={{ fontSize: '9px', fontFamily: 'monospace', color: '#94a3b8' }}>
+                <b style={{ fontSize: '9px', fontFamily: 'monospace', color: 'var(--muted)' }}>
                   {incident.edgeEventId || 'Not recorded'}
                 </b>
               </div>
@@ -349,7 +349,7 @@ export default function IncidentDrawer({
             </div>
 
             {!incident.sourceCandidateId && (
-              <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: '1px solid #1a2230', fontSize: '9px', color: '#64748b', lineHeight: 1.4 }}>
+              <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: '1px solid var(--line)', fontSize: '9px', color: 'var(--muted)', lineHeight: 1.4 }}>
                 This record pre-dates candidate pipeline ingestion or was ingested directly into the municipal layer.
               </div>
             )}
@@ -366,11 +366,11 @@ export default function IncidentDrawer({
         {/* PART 9: GPS & SENSOR LOCATION                                */}
         {/* ============================================================ */}
         <div style={{ marginBottom: '18px' }}>
-          <div style={{ fontSize: '10px', fontWeight: 800, color: '#8e9ab1', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
             GPS &amp; Location
           </div>
 
-          <div style={{ background: '#0a0e16', border: '1px solid #1e2636', borderRadius: '8px', padding: '12px' }}>
+          <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: '8px', padding: '12px' }}>
             <div className="detail-grid" style={{ border: 0, padding: 0, gridTemplateColumns: '1fr 1fr' }}>
               <div>
                 <small>Latitude</small>
@@ -388,7 +388,7 @@ export default function IncidentDrawer({
               )}
               <div style={{ gridColumn: 'span 2', marginTop: '4px' }}>
                 <small>Reverse Geocoded Address</small>
-                <b style={{ fontSize: '11px', lineHeight: 1.4, color: '#cbd5e1' }}>{addressStr}</b>
+                <b style={{ fontSize: '11px', lineHeight: 1.4, color: 'var(--text)' }}>{addressStr}</b>
               </div>
             </div>
           </div>
@@ -399,7 +399,7 @@ export default function IncidentDrawer({
         {/* ============================================================ */}
         <div style={{ marginBottom: '18px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#8e9ab1', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               Visual Evidence
             </span>
             {hasEvidence && (
@@ -421,7 +421,7 @@ export default function IncidentDrawer({
               <b style={{ display: 'block', fontSize: '11px', color: '#f1f5f9', marginBottom: '2px' }}>
                 Evidence Clip Available
               </b>
-              <small style={{ display: 'block', color: '#94a3b8', fontSize: '9px', marginBottom: '10px' }}>
+              <small style={{ display: 'block', color: 'var(--muted)', fontSize: '9px', marginBottom: '10px' }}>
                 A 5-second verified evidence video clip is stored and linked to this incident.
               </small>
               <a
@@ -435,7 +435,7 @@ export default function IncidentDrawer({
                   justifyContent: 'center',
                   gap: '6px',
                   background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                  color: '#fff',
+                  color: 'var(--text)',
                   textDecoration: 'none',
                   fontWeight: 700,
                   fontSize: '11px',
@@ -448,7 +448,7 @@ export default function IncidentDrawer({
               </a>
             </div>
           ) : (
-            <div style={{ background: '#0a0e16', border: '1px solid #1e2636', borderRadius: '8px', padding: '12px', textAlign: 'center', color: '#8e9ab1' }}>
+            <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: '8px', padding: '12px', textAlign: 'center', color: 'var(--muted)' }}>
               <span style={{ fontSize: '10px', display: 'block', fontWeight: 600 }}>No evidence attached</span>
               <small style={{ fontSize: '9px', color: '#5f6d84', marginTop: '2px', display: 'block' }}>
                 No video clip is uploaded for this pothole incident yet.
@@ -461,7 +461,7 @@ export default function IncidentDrawer({
         {/* PART 11: PIPELINE LINEAGE TRACE                              */}
         {/* ============================================================ */}
         <div style={{ marginTop: '22px' }}>
-          <div style={{ fontSize: '10px', fontWeight: 800, color: '#8e9ab1', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
             Pipeline Architecture Provenance
           </div>
           <div className="drawer-flow" style={{ margin: 0 }}>

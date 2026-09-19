@@ -200,7 +200,7 @@ export default function CandidatePipeline({
       </section>
 
       {/* SUMMARY STAT CARDS (Calculated from Real Candidate API Data) */}
-      <section className="stats" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: '16px' }}>
+      <section className="stats">
         <StatCard
           label="Total Candidates"
           value={stats.total}
@@ -263,7 +263,7 @@ export default function CandidatePipeline({
       </div>
 
       {/* CANDIDATE QUEUE TABLE */}
-      <div className="panel table-panel">
+      <div className="panel table-panel table-scroll-wrapper">
         <div className="table-head" style={{ gridTemplateColumns: '1.4fr 0.9fr 1.3fr 0.8fr 1.1fr 1.2fr 1.4fr' }}>
           <span>Candidate</span>
           <span>Bus</span>
@@ -275,7 +275,7 @@ export default function CandidatePipeline({
         </div>
 
         {loading ? (
-          <div style={{ padding: '50px 16px', textAlign: 'center', color: '#8e9ab1' }}>
+          <div style={{ padding: '50px 16px', textAlign: 'center', color: 'var(--muted)' }}>
             <Loader2 style={{ width: 24, height: 24, margin: '0 auto 10px', display: 'block', animation: 'spin 1s linear infinite' }} />
             <span style={{ fontSize: '11px', color: '#c4b5fd' }}>Loading candidate pipeline...</span>
           </div>
@@ -283,20 +283,20 @@ export default function CandidatePipeline({
           <div style={{ padding: '40px 16px', textAlign: 'center', color: '#ff6b81' }}>
             <AlertTriangle style={{ width: 24, height: 24, margin: '0 auto 8px', display: 'block' }} />
             <b style={{ fontSize: '12px', display: 'block' }}>Unable to load candidate events</b>
-            <small style={{ fontSize: '10px', color: '#8e9ab1' }}>{error}</small>
+            <small style={{ fontSize: '10px', color: 'var(--muted)' }}>{error}</small>
           </div>
         ) : candidates.length === 0 ? (
-          <div style={{ padding: '50px 16px', textAlign: 'center', color: '#8e9ab1' }}>
-            <Sparkles style={{ width: 24, height: 24, margin: '0 auto 8px', display: 'block', color: '#64748b' }} />
+          <div style={{ padding: '50px 16px', textAlign: 'center', color: 'var(--muted)' }}>
+            <Sparkles style={{ width: 24, height: 24, margin: '0 auto 8px', display: 'block', color: 'var(--muted)' }} />
             <span style={{ fontSize: '12px', fontWeight: 600, display: 'block' }}>NO CANDIDATES</span>
-            <small style={{ fontSize: '10px', color: '#64748b', marginTop: '4px', display: 'block' }}>
+            <small style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '4px', display: 'block' }}>
               Central has not received any candidate events yet.
             </small>
           </div>
         ) : filteredCandidates.length === 0 ? (
-          <div style={{ padding: '40px 16px', textAlign: 'center', color: '#8e9ab1' }}>
+          <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--muted)' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, display: 'block' }}>NO MATCHING CANDIDATES</span>
-            <small style={{ fontSize: '10px', color: '#64748b', marginTop: '4px', display: 'block' }}>
+            <small style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '4px', display: 'block' }}>
               Try another filter or search query.
             </small>
           </div>
@@ -329,13 +329,13 @@ export default function CandidatePipeline({
 
                 {/* BUS ID */}
                 <span>
-                  <b style={{ color: '#f1f5f9', fontSize: '10px' }}>{c.busId || 'RAAHI-01'}</b>
+                  <b style={{ color: 'var(--text)', fontSize: '10px' }}>{c.busId || 'RAAHI-01'}</b>
                 </span>
 
                 {/* EDGE DETECTION (ORIGINAL EDGE DATA) */}
                 <span>
-                  <b style={{ color: '#fff', fontSize: '10px', textTransform: 'capitalize' }}>{c.class || 'pothole'}</b>
-                  <small style={{ color: '#8e9ab1' }}>{c.edgeModel || 'YOLO11n'}</small>
+                  <b style={{ color: 'var(--text)', fontSize: '10px', textTransform: 'capitalize' }}>{c.class || 'pothole'}</b>
+                  <small style={{ color: 'var(--muted)' }}>{c.edgeModel || 'YOLO11n'}</small>
                 </span>
 
                 {/* EDGE CONFIDENCE */}
@@ -345,7 +345,7 @@ export default function CandidatePipeline({
 
                 {/* TIMESTAMP */}
                 <span>
-                  <span style={{ fontSize: '10px', color: '#94a3b8' }}>{timeStr}</span>
+                  <span style={{ fontSize: '10px', color: 'var(--muted)' }}>{timeStr}</span>
                 </span>
 
                 {/* PROMOTION STATE */}

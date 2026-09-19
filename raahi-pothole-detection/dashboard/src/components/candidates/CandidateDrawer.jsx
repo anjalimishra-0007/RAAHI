@@ -138,7 +138,7 @@ export default function CandidateDrawer({
           </div>
           <div>
             <small>Bus Unit</small>
-            <b style={{ color: '#fff' }}>{candidate.busId || 'RAAHI-01'}</b>
+            <b style={{ color: 'var(--text)' }}>{candidate.busId || 'RAAHI-01'}</b>
           </div>
           <div>
             <small>Delivery Status</small>
@@ -152,14 +152,14 @@ export default function CandidateDrawer({
 
         {/* EDGE YOLO DETECTION DETAILS */}
         <div style={{ marginBottom: '18px' }}>
-          <div style={{ fontSize: '10px', fontWeight: 800, color: '#8e9ab1', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
             Edge Detector Telemetry
           </div>
-          <div style={{ background: '#0a0e16', border: '1px solid #1e2636', borderRadius: '8px', padding: '12px' }}>
+          <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: '8px', padding: '12px' }}>
             <div className="detail-grid" style={{ border: 0, padding: 0 }}>
               <div>
                 <small>Edge Class</small>
-                <b style={{ color: '#fff', textTransform: 'capitalize' }}>{candidate.class || 'pothole'}</b>
+                <b style={{ color: 'var(--text)', textTransform: 'capitalize' }}>{candidate.class || 'pothole'}</b>
               </div>
               <div>
                 <small>Edge Model</small>
@@ -176,7 +176,7 @@ export default function CandidateDrawer({
               {hasBbox && (
                 <div style={{ gridColumn: 'span 2', marginTop: '4px' }}>
                   <small>Bounding Box Coordinates</small>
-                  <b style={{ fontSize: '10px', fontFamily: 'monospace', color: '#94a3b8' }}>
+                  <b style={{ fontSize: '10px', fontFamily: 'monospace', color: 'var(--muted)' }}>
                     [{bbox.x1}, {bbox.y1}, {bbox.x2}, {bbox.y2}]
                   </b>
                 </div>
@@ -187,10 +187,10 @@ export default function CandidateDrawer({
 
         {/* GPS LOCATION SECTION */}
         <div style={{ marginBottom: '18px' }}>
-          <div style={{ fontSize: '10px', fontWeight: 800, color: '#8e9ab1', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
             Edge GPS Coordinates
           </div>
-          <div style={{ background: '#0a0e16', border: '1px solid #1e2636', borderRadius: '8px', padding: '12px' }}>
+          <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: '8px', padding: '12px' }}>
             <div className="detail-grid" style={{ border: 0, padding: 0 }}>
               <div style={{ gridColumn: 'span 2' }}>
                 <small>Associated Coordinates</small>
@@ -208,7 +208,7 @@ export default function CandidateDrawer({
 
         {/* EVIDENCE SECTION */}
         <div style={{ marginBottom: '18px' }}>
-          <div style={{ fontSize: '10px', fontWeight: 800, color: '#8e9ab1', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
             Visual Evidence
           </div>
           {hasEvidence ? (
@@ -228,7 +228,7 @@ export default function CandidateDrawer({
                 </div>
                 <div>
                   <b style={{ fontSize: '11px', color: '#f1f5f9', display: 'block' }}>Evidence Attached</b>
-                  <small style={{ fontSize: '9px', color: '#94a3b8' }}>Visual capture from vehicle cameras</small>
+                  <small style={{ fontSize: '9px', color: 'var(--muted)' }}>Visual capture from vehicle cameras</small>
                 </div>
               </div>
               <a
@@ -242,7 +242,7 @@ export default function CandidateDrawer({
               </a>
             </div>
           ) : (
-            <div style={{ background: '#0a0e16', border: '1px solid #1e2636', borderRadius: '8px', padding: '12px', textAlign: 'center', color: '#64748b', fontSize: '10px' }}>
+            <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: '8px', padding: '12px', textAlign: 'center', color: 'var(--muted)', fontSize: '10px' }}>
               No visual evidence attached to this candidate event.
             </div>
           )}
@@ -250,10 +250,10 @@ export default function CandidateDrawer({
 
         {/* PROMOTION / AUTHORITY RECORD (BIDIRECTIONAL LINEAGE) */}
         <div style={{ marginBottom: '18px' }}>
-          <div style={{ fontSize: '10px', fontWeight: 800, color: '#8e9ab1', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
             Authority &amp; Deduplication State
           </div>
-          <div style={{ background: '#0a0e16', border: '1px solid #1e2636', borderRadius: '8px', padding: '12px' }}>
+          <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: '8px', padding: '12px' }}>
             {isPromoted ? (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '10px' }}>
@@ -261,21 +261,21 @@ export default function CandidateDrawer({
                     <span className="demo-tag" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.35)', fontSize: '9px', fontWeight: 700 }}>
                       PROMOTED TO AUTHORITATIVE INCIDENT
                     </span>
-                    <b style={{ display: 'block', fontSize: '14px', color: '#fff', marginTop: '4px' }}>
+                    <b style={{ display: 'block', fontSize: '14px', color: 'var(--text)', marginTop: '4px' }}>
                       {candidate.promotedToPotholeId}
                     </b>
                   </div>
                   <CheckCircle2 style={{ width: 22, height: 22, color: '#38bdf8' }} />
                 </div>
 
-                <div style={{ borderTop: '1px solid #1e2636', paddingTop: '10px', marginTop: '8px' }}>
+                <div style={{ borderTop: '1px solid var(--line)', paddingTop: '10px', marginTop: '8px' }}>
                   <button
                     className="primary"
                     style={{
                       width: '100%',
                       background: 'linear-gradient(135deg, rgba(56,189,248,0.25) 0%, rgba(59,130,246,0.35) 100%)',
                       border: '1px solid #38bdf8',
-                      color: '#fff',
+                      color: 'var(--text)',
                       fontSize: '11px',
                       padding: '8px 12px',
                       display: 'flex',
@@ -314,7 +314,7 @@ export default function CandidateDrawer({
               <div style={{ textAlign: 'center', padding: '12px 0' }}>
                 <Clock style={{ width: 20, height: 20, color: '#ffb42d', margin: '0 auto 6px', display: 'block' }} />
                 <b style={{ color: '#ffb42d', fontSize: '11px', display: 'block' }}>Pending Central Promotion</b>
-                <p style={{ color: '#8e9ab1', fontSize: '10px', margin: '4px 0 0', lineHeight: 1.4 }}>
+                <p style={{ color: 'var(--muted)', fontSize: '10px', margin: '4px 0 0', lineHeight: 1.4 }}>
                   This candidate event is in the ingestion buffer. Promoting it will run 10m Haversine spatial fusion and assign it to an authoritative Pothole record.
                 </p>
               </div>
