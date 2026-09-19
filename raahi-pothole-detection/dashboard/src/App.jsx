@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertCircle, AlertTriangle, BusFront, Camera, CheckCircle2, ChevronRight, CircleHelp, Download, ExternalLink, Film, Gauge, Layers3, Loader2, LocateFixed, MapPinned, Menu, Radio, RefreshCw, Search, Settings, ShieldCheck, Siren, Smartphone, Sparkles, TrafficCone, TrendingUp, Video, X, Zap } from 'lucide-react';
 import MapView from './components/MapView';
 import StatCard from './components/StatCard';

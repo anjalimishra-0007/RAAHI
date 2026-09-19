@@ -1,3 +1,4 @@
+import React from 'react';
 import { Film, AlertCircle, Loader2 } from 'lucide-react';
 
 const statusDotColor = {

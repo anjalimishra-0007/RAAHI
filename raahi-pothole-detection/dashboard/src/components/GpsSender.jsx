@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Navigation, Radio, AlertTriangle, CheckCircle2, XCircle, ArrowLeft, ShieldAlert, RefreshCw, Smartphone } from 'lucide-react';
 
 export default function GpsSender({ onBack }) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Camera, RefreshCw, ShieldAlert, ArrowLeft, Radio, CheckCircle2, AlertTriangle, Video, Smartphone, Sparkles, Flame, Eye, Navigation } from 'lucide-react';
 
 export default function PhoneCameraSender({ onBack }) {

@@ -4,9 +4,12 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 
 export default defineConfig(({ command }) => ({
   plugins: [
-    react(),
+    react({ jsxRuntime: 'automatic' }),
     ...(command === 'serve' ? [basicSsl()] : [])
   ],
+  esbuild: {
+    jsx: 'automatic',
+  },
   server: {
     host: '0.0.0.0',
     port: 5173,

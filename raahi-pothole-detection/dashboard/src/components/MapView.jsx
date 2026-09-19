@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { Loader2, AlertCircle, AlertTriangle } from 'lucide-react';
 
