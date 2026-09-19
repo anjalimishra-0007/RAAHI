@@ -1,9 +1,12 @@
 # RAAHI Central: Authoritative Fleet Intelligence & Municipal GIS Platform
 
-> **Project RAAHI (Road Assessment and Hazard Intelligence)**  
-> **Central Aggregation, Spatial Deduplication, and Civic Infrastructure System**  
-> Repository: `https://github.com/iUjjwalRaj/RAAHI-Central.git`  
-> Local Path: `/Users/ujjwalraj/Desktop/RAAHI22`  
+> **Project RAAHI (Road Assessment and Hazard Intelligence)**
+> **Central Aggregation, Spatial Deduplication, and Civic Infrastructure System**
+> Repository: `https://github.com/iUjjwalRaj/RAAHI-Central.git`
+> Primary Production Host: `https://raahi.feminismindia.com`
+<br>
+> Secondary Alias Host: `https://raahi.ujjwalraj.online`
+<br>
 > Edge Companion: `https://github.com/iUjjwalRaj/RAAHI-Edge.git`
 
 ---
@@ -54,70 +57,87 @@
 19. [GIS / Map Intelligence](#19-gis--map-intelligence)
 20. [Central API Reference](#20-central-api-reference)
 21. [End-to-End Data Flows](#21-end-to-end-data-flows)
-22. [Central Reliability](#22-central-reliability)
-23. [Security](#23-security)
+22. [Central Reliability & Process Supervision](#22-central-reliability--process-supervision)
+23. [Security & Network Isolation](#23-security--network-isolation)
 24. [Performance / Scalability](#24-performance--scalability)
 25. [Cost Architecture](#25-cost-architecture)
 26. [Testing](#26-testing)
 27. [Physical End-to-End Validation](#27-physical-end-to-end-validation)
 28. [Current Limitations](#28-current-limitations)
 29. [Future Improvements](#29-future-improvements)
-30. [Installation](#30-installation)
-31. [Environment Configuration](#31-environment-configuration)
-32. [Startup Instructions](#32-startup-instructions)
-33. [Troubleshooting](#33-troubleshooting)
-34. [Repository / GitHub](#34-repository--github)
-35. [Technical Glossary](#35-technical-glossary)
-36. [Final Architecture Summary](#36-final-architecture-summary)
+30. [Production Deployment Architecture](#30-production-deployment-architecture)
+31. [Local Installation & Development Setup](#31-local-installation--development-setup)
+32. [Environment Configuration](#32-environment-configuration)
+33. [Production Persistence & Service Management](#33-production-persistence--service-management)
+34. [Running in Production & Operational Runbook](#34-running-in-production--operational-runbook)
+35. [Troubleshooting](#35-troubleshooting)
+36. [Repository / GitHub](#36-repository--github)
+37. [Technical Glossary](#37-technical-glossary)
+38. [Final Architecture Summary](#38-final-architecture-summary)
 
 ---
 
 # 1. RAAHI Central Overview
 
-**RAAHI Central** (Road Assessment and Hazard Intelligence) is the server-side aggregation hub and municipal GIS platform for Project RAAHI. Built with Node.js, Express 4.21, and MongoDB 9.10, Central delivers deterministic geospatial deduplication, multi-bus traffic correlation, fleet telemetry tracking, digital video evidence synchronization via Google Drive, and interactive Leaflet GIS visualization.
+**RAAHI Central** (Road Assessment and Hazard Intelligence) is the authoritative municipal fleet aggregation hub and civic GIS platform for Project RAAHI. Built with Node.js (v22.23.2), Express (v4.21.2), and MongoDB Atlas via Mongoose (v9.10.0), Central provides deterministic 10-meter geospatial deduplication, multi-bus traffic congestion correlation, fleet telemetry ingestion, digital video evidence archival via Google Drive, and interactive Leaflet GIS cartography.
 
-Central acts as the authoritative fleet aggregation tier for **RAAHI-Edge**. While Edge executes on-vehicle computer vision and tracking, Central aggregates observations across time, space, and transit fleets into an authoritative database state.
+Central is deployed in production on Microsoft Azure (Ubuntu Server 24.04 LTS Gen2, Standard_B2ats_v2 in Central India) backed by a managed MongoDB Atlas cluster (database: `raahi`). Central is exposed publicly through Cloudflare Zero-Trust Tunnel routing to `http://localhost:5001`. Public traffic is served over HTTPS via the primary canonical production hostname **`https://raahi.feminismindia.com`** and a secondary alias **`https://raahi.ujjwalraj.online`** *(note: `raahi.feminismindia.com` is the canonical domain; `ujjwalraj.online` is an active deployment alias that may not be renewed in the future)*.
+
+Central operates as the authoritative counterpart to **RAAHI-Edge**. While edge units in public transit buses execute on-device computer vision and tracking, Central aggregates observations across time, geographic space, and transit fleets into an authoritative database state.
 
 ```
 +-------------------------------------------------------------------------+
 |                               RAAHI-EDGE                                |
 |  Samsung S23 FE Camera -> MediaMTX RTSP -> Dual YOLO11n (MPS/NPU)       |
-|  -> ByteTrack Tracker -> Event Engine -> GPS Association                |
+|  -> ByteTrack Tracker -> Event Engine -> GPS Association (~1 Hz GNSS)   |
 |  -> 15s Evidence Extraction (5.0s pre-event + 10.0s post-event)         |
 +-------------------------------------------------------------------------+
                                      │
                Event JSON Metadata   │   15-Second MP4 Evidence
            (POST /api/central/events) │ (POST /api/central/evidence/upload)
+                                     ▼ HTTPS Cellular Uplink
++-------------------------------------------------------------------------+
+|                 CLOUDFLARE EDGE & ZERO-TRUST TUNNEL                     |
+|  Canonical: https://raahi.feminismindia.com                             |
+|  Alias:     https://raahi.ujjwalraj.online                              |
+|  DDoS Mitigation & Edge TLS Termination -> cloudflared.service          |
++-------------------------------------------------------------------------+
+                                     │ (Outbound Encrypted Tunnel)
                                      ▼
 +-------------------------------------------------------------------------+
-|                              RAAHI-CENTRAL                              |
-|  Express Ingestion Gateway (Port 5001)                                  |
+|                 AZURE VM: raahi-central (Ubuntu 24.04)                  |
+|  Loopback Ingestion Gateway: http://localhost:5001 (systemd persistent) |
 |  -> Schema Sanitization & Idempotency Enforcement (edgeEventId)         |
 |  -> Candidate Event Staging ('candidate_events' collection)             |
-|  -> Haversine Mathematical Spatial Deduplication (10m Radius)           |
+|  -> Haversine Mathematical Spatial Deduplication (10m Proximity Radius) |
 |  -> Spatial-Temporal Traffic Incident Correlation (50m / 10min Window)  |
 |  -> Request-Driven Video Evidence Sync -> Google Drive API (OAuth 2.0)  |
-|  -> Authoritative Persistence ('potholes' & 'trafficincidents')        |
-|  -> Leaflet GIS Municipal Dashboard (Port 5173, 6s Polling Loop)        |
+|  -> Authoritative Municipal State ('potholes' & 'trafficincidents')     |
+|  -> Production React 18 + Leaflet 1.9 Municipal Command Center          |
++-------------------------------------------------------------------------+
+                                     │
+                                     ▼ (TLS Mongoose Connection)
++-------------------------------------------------------------------------+
+|                          MONGODB ATLAS CLUSTER                          |
+|  Authoritative Cloud Database ('raahi')                                 |
 +-------------------------------------------------------------------------+
 ```
 
 ### Why Central Exists Separately from Edge
 
-1. **Global Fleet Visibility vs. Local Vehicle Vision**: An edge device in a bus possesses purely local visibility of the roadway ahead. Central maintains fleet-wide visibility, synthesizing disparate observations across routes to identify longitudinal road degradation and recurring bottlenecks.
-2. **Bandwidth Economics & Network Conservation**: Continuous video streaming over cellular uplinks requires sustained high bandwidth and incurs substantial cellular data costs. Central receives **zero continuous video streams for perception**. Instead, buses transmit lightweight JSON event packages and upload targeted, 15-second MP4 evidence clips (5 seconds before the event and 10 seconds after the event, 15s total) only when physical road hazards or severe traffic conditions are verified.
-3. **Architectural Privacy Considerations**: Continuous video uploads to cloud servers capture private citizen faces and license plates. RAAHI addresses this through edge perception: raw video frames remain in volatile buffers on the vehicle and are discarded. Central receives only structured metadata and event-triggered 15-second evidence clips when anomalies occur, minimizing privacy exposure.
-4. **Authoritative Application State**: Transit agencies require an authoritative record to schedule repairs and evaluate infrastructure. Central transforms raw edge detections into auditable civic records with lifecycle status tracking (`open`, `investigating`, `repaired`, `ignored`).
+1. **Global Fleet Visibility vs. Local Vehicle Vision**: An edge device in a bus possesses purely local visibility of the roadway ahead. Central maintains fleet-wide visibility, synthesizing disparate observations across transit routes to identify longitudinal road degradation and recurring congestion bottlenecks.
+2. **Bandwidth Economics & Network Conservation**: Continuous video streaming over cellular uplinks requires sustained high bandwidth and incurs heavy ongoing cellular costs. Central receives **zero continuous video streams for perception**. Instead, buses transmit lightweight JSON event packages and upload targeted, 15.0-second MP4 evidence clips (5 seconds before the event and 10 seconds after the event, 15s total) only when physical road hazards or severe traffic conditions are verified.
+3. **Architectural Privacy Considerations**: Continuous video uploads to cloud servers capture private citizen faces and license plates. RAAHI addresses this through edge perception: raw video frames remain in volatile memory buffers on the vehicle and are discarded. Central receives only structured metadata and event-triggered 15-second evidence clips when anomalies occur, minimizing privacy exposure.
+4. **Authoritative Application State**: Municipal public works and transit agencies require a verified, single source of truth to schedule repairs and evaluate infrastructure. Central transforms raw edge detections into auditable civic records with lifecycle status tracking (`open`, `investigating`, `repaired`, `ignored`).
 
 ### Data Ingestion and Processing Lifecycle
 
 RAAHI Central receives two discrete streams from connected edge units:
 1. **Lightweight Event Packages (`POST /api/central/events`)**: Structured JSON containing `eventId`, `busId`, `eventType` (`pothole`, `congestion`), UTC `timestamp` ($t_0$), high-precision `location` (`latitude`, `longitude`, `accuracy`), `edgeModel` (`YOLO11n`), `confidence`, `class`, `boundingBox` (`x1, y1, x2, y2`), optional `trafficTelemetry`, and `evidenceReference`.
-2. **Binary Video Evidence Clips (`POST /api/central/evidence/upload`)**: Targeted 15-second MP4 clips ($t_0 - 5.0\text{s}$ to $t_0 + 10.0\text{s}$) providing visual verification of detected road defects or congestion bottlenecks.
+2. **Binary Video Evidence Clips (`POST /api/central/evidence/upload`)**: Targeted 15.0-second MP4 clips ($t_0 - 5.0\text{s}$ to $t_0 + 10.0\text{s}$) providing visual verification of detected road defects or congestion bottlenecks.
 3. **Live GPS Telemetry (`POST /api/gps`)**: Periodic vehicle coordinate updates that populate Central's fleet tracking map.
 
 Upon receiving edge data, Central validates schemas, enforces idempotency, stages candidates in `candidate_events`, executes 10-meter Haversine deduplication for potholes, correlates multi-bus traffic reports within 50m / 10-minute windows, syncs evidence to Google Drive, and updates the GIS dashboard. When multiple buses detect the same pothole, Central fuses them into a single record with incremented observation counts and combined reporting bus IDs.
-
 
 ---
 
@@ -126,69 +146,62 @@ Upon receiving edge data, Central validates schemas, enforces idempotency, stage
 The complete RAAHI system bridges edge perception on transit vehicles with central fleet intelligence across the cloud. Perception occurs exclusively at the vehicle edge; aggregation, correlation, and authoritative state management occur exclusively at Central.
 
 ```
-   VEHICLE / BUS CABIN (RAAHI-EDGE)
-   +---------------------------------------------------------------------+
-   |  Samsung Galaxy S23 FE Camera (1080p @ 30 FPS Optical Ingestion)   |
-   +---------------------------------------------------------------------+
+   VEHICLE CABIN (SAMSUNG GALAXY S23 FE)
+   +-------------------------------------------------------------------------+
+   |  Physical S23 FE Camera (1080p @ 30 FPS Optical Ingestion)              |
+   |  Hardware Exynos Encoder (c2.exynos.h264.encoder, 6.0 Mbps)             |
+   |  RAAHI Eye Android Application (com.example.raahieye)                   |
+   +-------------------------------------------------------------------------+
                                       │
                                       ▼ (Hardware H.264 / RTSP Stream)
-   +---------------------------------------------------------------------+
-   |  MediaMTX RTSP Server & Video Capture (capture/rtsp_receiver.py)    |
-   |  -> Circular Ring Buffer (ring_buffer/rolling_buffer.py)            |
-   +---------------------------------------------------------------------+
+   ON-VEHICLE EDGE NODE (RAAHI-EDGE)
+   +-------------------------------------------------------------------------+
+   |  MediaMTX RTSP Server & Low-Latency Video Receiver                      |
+   |  Decoded Frames -> Rolling Ring Buffer (180 Frames Memory Retention)    |
+   |  Dual YOLO11n Models (Pothole & Vehicle Perception on MPS/NPU)          |
+   |  ByteTrack Multi-Object Tracking & Road ROI Telemetry Engine            |
+   |  GPS Synchronization (~1 Hz GNSS Updates Associated at Detection Instant)|
+   |  Evidence Capture: 15.0s Clip (5.0s Pre-Event + 10.0s Post-Event)       |
+   |  Local SQLite Buffer & Offline Queue (data/raahi_edge.db)               |
+   +-------------------------------------------------------------------------+
                                       │
-                                      ▼ (Decoded Video Frames)
-   +---------------------------------------------------------------------+
-   |  RAAHI-Edge Perception Engine (inference/ & traffic/)               |
-   |  -> Dual YOLO11n (Pothole + Vehicle Detection on Apple MPS/NPU)     |
-   |  -> ByteTrack Multi-Object Tracking & Polygon ROI Traffic Flow      |
-   +---------------------------------------------------------------------+
+                                      ▼ HTTPS Cellular Uplink
+   EDGE CLOUD TRANSIT (CLOUDFLARE)
+   +-------------------------------------------------------------------------+
+   |  Public Ingestion Hostnames:                                            |
+   |    * Primary Canonical: https://raahi.feminismindia.com                 |
+   |    * Secondary Alias:   https://raahi.ujjwalraj.online                  |
+   |  Cloudflare Edge Network (DDoS Mitigation, TLS Termination)             |
+   |  Cloudflare Zero-Trust Tunnel Connector (cloudflared.service)           |
+   +-------------------------------------------------------------------------+
                                       │
-                                      ▼ (Detections & Trajectories)
-   +---------------------------------------------------------------------+
-   |  Edge Event & Evidence Engine (events/ & evidence/)                 |
-   |  -> GPS Synchronization (gps/gps_manager.py, ~1 Hz GNSS Updates)    |
-   |  -> 15s MP4 Evidence Slicer (5.0s pre-event + 10.0s post-event)     |
-   |  -> SQLite Local Queue (storage/raahi_local.db)                     |
-   +---------------------------------------------------------------------+
-                                      │
-                                      │ Cellular Internet Uplink
-                                      ▼
-   CENTRAL CLOUD / SERVER (RAAHI-CENTRAL)
-   +---------------------------------------------------------------------+
-   |  Central REST Ingestion Gateway (dashboard/server/index.js)         |
-   |  -> Express.js HTTP Service on Port 5001                            |
-   |  -> POST /api/central/events & POST /api/central/evidence/upload    |
-   +---------------------------------------------------------------------+
-                                      │
-                                      ▼
-   +---------------------------------------------------------------------+
-   |  Deterministic Cleaning & Validation (services/centralEventService) |
-   |  -> Idempotency Enforcement & Candidate Staging (candidate_events)  |
-   +---------------------------------------------------------------------+
-                                      │
-                 ┌────────────────────┴────────────────────┐
-                 ▼ (pothole / road_damage)                 ▼ (congestion)
-   +------------------------------------+   +-----------------------------------+
-   |  Geospatial Deduplication Engine   |   |  Multi-Bus Traffic Correlation    |
-   |  -> Spherical Haversine Algorithm  |   |  -> 50m Spatial / 10min Window    |
-   |  -> 10-Meter Proximity Threshold   |   |  -> Multi-Bus Severity Escalation |
-   |  -> Authoritative 'potholes' Table |   |  -> Authoritative 'traffic' Table |
-   +------------------------------------+   +-----------------------------------+
-                 │                                         │
-                 └────────────────────┬────────────────────┘
+                                      ▼ (Outbound-Only Encrypted Tunnel)
+   AZURE CLUSTER / SERVER (RAAHI-CENTRAL)
+   +-------------------------------------------------------------------------+
+   |  Azure Virtual Machine: raahi-central (Standard_B2ats_v2, Ubuntu 24.04) |
+   |  Azure NSG: Port 22 (SSH) Only; Port 5001 Private on localhost          |
+   |  RAAHI Central Production Service (systemd: raahi-central.service)      |
+   |  Express.js HTTP Ingestion Gateway (:5001, Node.js v22.23.2)            |
+   |  POST /api/central/events  &  POST /api/central/evidence/upload         |
+   |  POST /api/gps  &  GET /api/status                                      |
+   +-------------------------------------------------------------------------+
                                       │
                                       ▼
-   +---------------------------------------------------------------------+
-   |  Digital Video Evidence Pipeline (services/googleDriveService.js)   |
-   |  -> Staged in videos/evidence/ -> Request-Driven Google Drive Sync  |
-   +---------------------------------------------------------------------+
+   +-------------------------------------------------------------------------+
+   |  Deterministic Cleaning & Validation (services/centralEventService.js)  |
+   |  Candidate Event Staging ('candidate_events' Collection)                |
+   |  Haversine 10-Meter Spatial Deduplication ('potholes' Collection)       |
+   |  Multi-Bus 50m / 10-Minute Traffic Correlation ('trafficincidents')     |
+   |  Dual-Tier Evidence Storage (Local Staging + Google Drive Sync)         |
+   |  Production React 18 + Leaflet 1.9 Municipal Command Center          |
+   +-------------------------------------------------------------------------+
                                       │
-                                      ▼
-   +---------------------------------------------------------------------+
-   |  Central Web Dashboard & GIS System (Port 5173)                     |
-   |  -> React 18 + Vite 6 + Leaflet 1.9 Cartography (6s Polling)        |
-   +---------------------------------------------------------------------+
+                                      ▼ (TLS Mongoose Connection)
+   DATABASE (MONGODB ATLAS)
+   +-------------------------------------------------------------------------+
+   |  MongoDB Atlas Cluster (Remote Cloud Database: 'raahi')                 |
+   |  Collections: candidate_events, potholes, trafficincidents              |
+   +-------------------------------------------------------------------------+
 ```
 
 ### The Edge / Central Architectural Boundary
@@ -204,8 +217,9 @@ The complete RAAHI system bridges edge perception on transit vehicles with centr
 
 | Architectural Dimension | RAAHI-Edge (Vehicle Node) | RAAHI-Central (Cloud / Server Node) |
 | :--- | :--- | :--- |
-| **Physical Location** | Vehicle cabin (windshield mount) | Central cloud server / development machine |
-| **Hardware Platform** | Samsung S23 FE / Apple Silicon Edge Node | Standard Linux/macOS CPU Server |
+| **Physical Location** | Vehicle cabin (windshield mount) | Microsoft Azure Cloud (`raahi-central`, Central India) |
+| **Hardware Platform** | Samsung S23 FE / Apple Silicon Edge Node | Azure Standard_B2ats_v2 VM (2 vCPU, 1 GiB RAM, Ubuntu 24.04) |
+| **Database** | Local SQLite (`data/raahi_edge.db`) | Remote MongoDB Atlas Cluster (`raahi` database) |
 | **Video Camera Ingestion** | Hardware 1080p @ 30 FPS ingestion via RTSP | **Zero continuous video ingestion** (receives 15s MP4 clips only) |
 | **AI / Machine Learning** | **100% of AI Inference** (Dual YOLO11n on MPS/NPU) | **0% AI Inference** (Strictly zero VLM, LLM, or YOLO) |
 | **Object Detection** | Potholes, road cracks, vehicles, obstacles | None |
@@ -345,18 +359,18 @@ The Central server is implemented in `raahi-pothole-detection/dashboard/server/i
 
 ### Server Architecture & Startup Lifecycle
 
-When started via `npm run server` or `node server/index.js`, the server executes:
-1. **Environment Configuration**: Loads variables from `dashboard/.env` via `dotenv.config()`.
-2. **Database Connection**: Invokes `connectDB()` from `server/db.js` to establish a persistent connection to MongoDB.
+When started via `systemctl start raahi-central` (in production) or `node server/index.js` (in local development), the server executes:
+1. **Environment Configuration**: Loads variables from `dashboard/.env` via `dotenv.config()` and systemd's `EnvironmentFile`.
+2. **Database Connection**: Invokes `connectDB()` from `server/db.js` to establish a persistent TLS connection to MongoDB Atlas (database: `raahi`).
 3. **Middleware Initialization**:
-   - `cors()`: Configures Cross-Origin Resource Sharing to allow web dashboard requests from `http://localhost:5173`.
+   - `cors()`: Configures Cross-Origin Resource Sharing for API consumers and the dashboard.
    - `express.json()`: Body parser for JSON metadata payloads.
-   - `express.static()`: Mounts `videos/evidence/` at `/evidence`, enabling direct local HTTP video playback fallback.
+   - `express.static()`: Mounts `videos/evidence/` at `/evidence` (local playback fallback) and `dist/` at root `/` (serving the compiled React 18 production bundle).
 4. **In-Memory State Initialization**:
    - `activeFleet = new Map()`: In-memory registry tracking connected edge devices, coordinates, speeds, and liveness.
-   - `latestGps`: Stores the latest received GPS breadcrumb.
+   - `latestGps`: Stores the latest received GPS breadcrumb from active vehicles.
    - `gpsHistory`: Rolling circular array of the last 1,000 GPS breadcrumbs (`MAX_GPS_HISTORY`).
-5. **Port Binding**: Binds to `process.env.PORT || 5001` and begins listening for HTTP requests.
+5. **Port Binding**: Binds to `process.env.PORT || 5001` on loopback `localhost:5001` and begins listening for HTTP requests routed through Cloudflare Tunnel.
 
 ```javascript
 // raahi-pothole-detection/dashboard/server/index.js (Excerpts)
@@ -367,7 +381,9 @@ import { connectDB, isDbConnected, getDbInfo } from './db.js';
 import * as centralEventService from './services/centralEventService.js';
 import * as googleDriveService from './services/googleDriveService.js';
 
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 dotenv.config();
+
 const app = express();
 const PORT = process.env.PORT || 5001;
 
@@ -380,7 +396,7 @@ app.use('/evidence', express.static(path.join(PROJECT_ROOT, 'videos/evidence')))
 
 ### Database Lifecycle Management (`db.js`)
 
-Central encapsulates all database interactions in `server/db.js`. It configures Mongoose 9.10.0 with strict schema validation and attaches connection lifecycle listeners (`connected`, `error`, `disconnected`) with a 5000ms server selection timeout.
+Central encapsulates all database interactions in `server/db.js`. It configures Mongoose 9.10.0 with strict schema validation and attaches connection lifecycle listeners (`connected`, `error`, `disconnected`) with a 5000ms server selection timeout against the remote MongoDB Atlas cluster.
 
 ```javascript
 export function isDbConnected() {
@@ -388,8 +404,7 @@ export function isDbConnected() {
 }
 ```
 
-If MongoDB is offline, Central returns HTTP `503 Service Unavailable` on ingestion requests rather than crashing. The `GET /api/status` endpoint provides operational metrics to system monitoring agents.
-
+If MongoDB is temporarily unreachable, Central returns HTTP `503 Service Unavailable` on ingestion requests rather than crashing. The `GET /api/status` endpoint provides real-time operational status (`connected: true`, `readyState: 1`, `databaseName: "raahi"`).
 
 ---
 
@@ -991,7 +1006,7 @@ if (sharePublic) {
 
 # 17. MongoDB Data Model
 
-RAAHI Central uses MongoDB via Mongoose 9.10.0 with three dedicated collections: `candidate_events`, `potholes`, and `trafficincidents`.
+RAAHI Central connects remotely over TLS to a managed MongoDB Atlas cluster (database: `raahi`) using Mongoose 9.10.0 with three dedicated collections: `candidate_events`, `potholes`, and `trafficincidents`. Connection strings and credentials are securely injected via environment variables and are never committed to version control.
 
 ### Collection 1: `candidate_events` (`models/CandidateEvent.js`)
 Stages incoming edge event packages as a historical audit trail.
@@ -1205,6 +1220,12 @@ When new events are detected or deduplicated on Central, the map state updates i
 
 RAAHI Central exposes a RESTful JSON API implemented in Express 4.21 on port `5001`, partitioned into event ingestion, evidence handling, candidate review, fleet tracking, and municipal queries.
 
+All endpoints accept and return `application/json` unless otherwise specified.
+
+- **Primary Canonical Production Base URL**: `https://raahi.feminismindia.com`
+- **Secondary Deployment Alias Base URL**: `https://raahi.ujjwalraj.online`
+- **Internal Loopback Base URL**: `http://localhost:5001`
+
 ---
 
 ### Core Edge Ingestion Endpoints
@@ -1390,38 +1411,33 @@ The collaboration between RAAHI-Edge and RAAHI-Central is organized into determi
 
 ---
 
-# 22. Central Reliability
+# 22. Central Reliability & Process Supervision
 
-RAAHI Central is structured as a resilient prototype server that handles edge disconnects, database timeouts, and cloud storage failures without crashing.
+Central provides high operational availability through systemd process supervision, automated crash recovery, resilient database connection handling, and dual-tier evidence storage.
 
-```
-+-------------------------------------------------------------------------+
-|                      DEFENSIVE RELIABILITY MECHANISMS                   |
-|                                                                         |
-|  1. In-Memory Database Fallback                                         |
-|     * Server checks `isDbConnected()` before operations                 |
-|     * Returns clean HTTP 503 if DB offline without terminating process  |
-|                                                                         |
-|  2. Two-Tier Evidence Storage Resilience                                |
-|     * Local filesystem write is PRIMARY ('videos/evidence/')            |
-|     * Google Drive upload is SYNCHRONOUS SECONDARY                      |
-|     * If Drive fails or is unauthenticated, local clip remains served   |
-|                                                                         |
-|  3. Schema Sanitization & Boundary Isolation                            |
-|     * All edge inputs strictly typed and validated                      |
-|     * Unrecognized payload fields stripped defensively                  |
-|     * Bounding box validation prevents corrupt GIS calculations         |
-+-------------------------------------------------------------------------+
-```
+### 1. Systemd Production Process Supervision (`raahi-central.service`)
 
-### 1. Database Connection Resilience
+In production on the Azure VM, RAAHI Central runs as a dedicated systemd service managed under the `raahiadmin` user. The service configuration enforces:
+- **Auto-Boot Activation**: `WantedBy=multi-user.target` ensures Central starts immediately upon VM boot without requiring an interactive SSH session or manual command invocation.
+- **Unattended Crash Recovery**: Configured with `Restart=always` and `RestartSec=5s`. If the Node.js process ever exits abnormally or is killed, systemd automatically detects the termination and launches a clean replacement instance within 5 seconds.
+- **Cgroup Process Management**: `KillMode=control-group` guarantees that child processes spawned by npm/Node are cleanly reaped upon restart.
+- **Persistent Cloudflare Tunnel Supervision**: `cloudflared.service` runs concurrently under systemd, ensuring edge ingress remains persistently connected across restarts.
 
-Central maintains a persistent connection to MongoDB using Mongoose with automatic reconnection options. To ensure stability during development:
-- The server checks connection state via an internal `isDbConnected()` helper before executing database operations.
-- If MongoDB is temporarily stopped, endpoints return structured JSON errors (`503 Service Unavailable`) rather than throwing unhandled rejection errors that would terminate the Node.js process.
-- The `GET /api/status` endpoint remains operational to report database connectivity state to administrators.
+#### Verified Crash Recovery Test
+The automatic recovery mechanism was physically validated on the production Azure VM:
+1. The active running Node.js process (`PID 12707`) was deliberately terminated using `SIGKILL` (`kill -9`).
+2. Systemd journal immediately logged: `Process 12694 ExecStart=/usr/bin/npm start (code=killed, signal=KILL)`, entering `activating (auto-restart)` state.
+3. Within exactly 5 seconds, systemd initiated a fresh instance (`Main PID: 12885`), executed `node server/index.js`, and reconnected to MongoDB Atlas (`[MongoDB] Connected successfully!`).
+4. Operational probes (`curl http://localhost:5001/api/status`) and external Cloudflare endpoints returned HTTP 200 with full health restored without administrative intervention.
 
-### 2. Dual-Tier Evidence Storage
+### 2. Database Connection Resilience
+
+Central maintains a persistent connection to MongoDB Atlas using Mongoose with automated retry logic:
+- Endpoints verify connectivity via `isDbConnected()` before attempting query execution.
+- If Atlas connectivity is temporarily interrupted during a network partition, Central returns structured JSON errors (`503 Service Unavailable`) rather than throwing unhandled promise rejections that would crash the server.
+- The `GET /api/status` endpoint remains operational even during database disruptions to report diagnostics to municipal monitoring tools.
+
+### 3. Dual-Tier Evidence Storage
 
 Video evidence is protected by a two-tier storage model:
 1. **Primary Local Staging**: Inbound video binaries are immediately saved to the local filesystem under `videos/evidence/{fileName}` using standard POSIX file operations.
@@ -1430,7 +1446,7 @@ Video evidence is protected by a two-tier storage model:
 
 ---
 
-# 23. Security
+# 23. Security & Network Isolation
 
 The security posture of RAAHI Central explicitly distinguishes between **implemented prototype controls** and **recommended production enterprise controls**.
 
@@ -1453,12 +1469,14 @@ The security posture of RAAHI Central explicitly distinguishes between **impleme
 +-------------------------------------------------------------------------+
 ```
 
-### Currently Implemented Security Controls
+### Currently Implemented Production Security Controls
 
-1. **Path Traversal Protection**: Upload filenames in headers are sanitized via `path.basename()` to prevent directory traversal attacks.
-2. **Payload Size Restrictions**: Evidence uploads are limited to 100 MB via `express.raw({ limit: '100mb' })` to prevent memory exhaustion.
-3. **Secret Isolation**: OAuth credentials and refresh tokens are loaded from `.env` or `config/drive_token.json`, both excluded from Git via `.gitignore`.
-4. **Architectural Privacy Benefit**: Continuous raw video streams are never transmitted. Central only receives targeted 15-second clips when anomalies are detected.
+1. **Azure Network Security Group (NSG) Ingress Isolation**: The Azure VM's Network Security Group explicitly permits only SSH (port 22) for administrator access. Port 5001 is **NOT publicly exposed through the Azure NSG**; Central binds only to the internal loopback interface, preventing direct port scanning or perimeter attacks.
+2. **Cloudflare Tunnel Ingress**: Port 5001 is not exposed through the Azure NSG. Public application traffic is routed through the Cloudflare Tunnel to the loopback service. The `cloudflared.service` connector establishes an outbound-only encrypted connection to Cloudflare's edge network.
+3. **Strict Path Traversal Protection**: Upload filenames supplied in HTTP headers are sanitized via `path.basename()` to block directory traversal attacks.
+4. **Binary Payload Size Restrictions**: Evidence uploads are strictly capped at 100 MB via `express.raw({ limit: '100mb' })` to prevent buffer overflow or memory exhaustion.
+5. **Secret Isolation**: Database connection strings, OAuth client secrets, and environment tokens are stored in `/home/raahiadmin/RAAHI-Central/raahi-pothole-detection/dashboard/.env` with strict filesystem permissions (`chmod 600`), isolated from Git tracking via `.gitignore`.
+6. **Architectural Privacy Preservation**: Continuous raw optical video is never transmitted to Central. Central receives only targeted 15-second evidence clips triggered by confirmed road anomalies.
 
 ### Recommended Production Controls (Enterprise Roadmap)
 
@@ -1593,51 +1611,52 @@ node test_central_event_promotion.js
 
 # 27. Physical End-to-End Validation
 
-RAAHI has been validated using a physical hardware testbed connecting a Samsung Galaxy S23 FE testbed to RAAHI Central.
+RAAHI Central has been physically validated using the real on-vehicle edge testbed connecting a Samsung Galaxy S23 FE (`SM-S711B`, Android 16) to RAAHI Central.
 
 ```
 +-------------------------------------------------------------------------+
 |                  PHYSICAL VALIDATION TESTBED TOPOLOGY                   |
 |                                                                         |
-|  [ Physical Testbed: Samsung Galaxy S23 FE ]                            |
-|    * Camera: 1080p @ 30 FPS optical stream                             |
-|    * Hardware H.264 Encoder -> MediaMTX RTSP Server                     |
-|    * Edge Machine: MacBook running RAAHI-Edge pipeline                 |
-|    * Dual YOLO11n Models (Road Defects & Vehicle Flow)                 |
-|    * Circular Ring Buffer: 15.0s clip (5.0s pre-event + 10.0s post)   |
+|  [ Physical Testbed: Samsung Galaxy S23 FE (SM-S711B) ]                 |
+|    * Camera: 1080p @ 30 FPS optical stream                              |
+|    * Hardware H.264 Encoder: c2.exynos.h264.encoder (6.0 Mbps)          |
+|    * MediaMTX RTSP Server (:8555)                                       |
+|    * Physical GNSS Fixes: ~1 Hz satellite telemetry physically verified |
+|    * Edge Pipeline: Dual YOLO11n Models (Pothole + Vehicle Perception)  |
+|    * Circular Ring Buffer: 15.0s clip (5.0s pre-event + 10.0s post)    |
 |                                                                         |
 |                                │ (HTTP REST / JSON + MP4)               |
 |                                ▼                                        |
 |  [ RAAHI Central Server (Port 5001) ]                                   |
-|    * Express 4.21 Ingestion Gateway                                     |
-|    * MongoDB 9.10 ('candidate_events', 'potholes')                     |
-|    * 10m Haversine Deduplication Engine                                 |
+|    * Express 4.21 Ingestion Gateway (raahi-central.service)             |
+|    * MongoDB Atlas ('candidate_events', 'potholes')                     |
+|    * 10m Haversine Deduplication Engine (merged into POT-000002)        |
 |    * Synchronous Google Drive API Evidence Upload                       |
 |                                                                         |
-|                                │ (Periodic Polling Refresh)             |
+|                                │ (Web Browser Access via Cloudflare)    |
 |                                ▼                                        |
-|  [ Leaflet GIS Municipal Dashboard (Port 5173) ]                        |
+|  [ Leaflet GIS Municipal Dashboard (Port 5001 / Cloudflare) ]           |
+|    * Production build served via Express static middleware              |
 |    * Rendered verified pothole marker with pulse animation              |
 |    * Playable 15-second MP4 evidence clip in modal                      |
+|    * Real-time GPS location lock pill                                   |
 +-------------------------------------------------------------------------+
 ```
 
 ### Physical Testbed Execution Sequence
 
-1. **Optical Capture & Edge Detection**:
-   The Samsung Galaxy S23 FE camera streamed roadway video over RTSP at 1080p @ 30 FPS. The edge YOLO11n model detected road defects on-device during streaming, triggering the edge event engine at time $t_0$.
-
-2. **Deterministic Evidence Clipping**:
-   Upon defect trigger, the edge circular ring buffer extracted a verified 15.0-second MP4 evidence clip ($t_0 - 5.0\text{s}$ pre-event buffer + $t_0 + 10.0\text{s}$ post-event buffer = 450 frames total at 30 FPS).
-
-3. **Central Ingestion & Deduplication**:
-   - The edge pipeline transmitted event metadata via `POST /api/central/events`.
-   - Central validated the schema, checked coordinates against MongoDB using Haversine distance, and staged the candidate event.
-   - The edge pipeline uploaded the 15-second MP4 clip via `POST /api/central/evidence/upload`.
-   - Central staged the file on disk and synchronized it to Google Drive, updating the record with the viewable link.
-
-4. **Dashboard Verification**:
-   The Leaflet GIS dashboard on port `5173` refreshed via periodic polling, rendering the verified defect with its Google Drive evidence link.
+1. **Optical Capture & Hardware Encoding**:
+   The Samsung Galaxy S23 FE physical camera captured live roadway video, encoded it via the Exynos hardware encoder (`c2.exynos.h264.encoder`) at 1080p @ 30 FPS (6.0 Mbps), and published it over RTSP.
+2. **On-Device Edge Perception**:
+   The edge pipeline ingested the RTSP stream into OpenCV, executed dual YOLO11n inference, tracked vehicles with ByteTrack, and maintained a continuous 180-frame ring buffer.
+3. **GNSS / GPS Functionality Verification**:
+   GNSS/GPS functionality was physically verified during testing: the physical S23 FE GNSS chip delivered live satellite coordinates at ~1 Hz cadence, associating coordinates with detection frames at time $t_0$. Telemetry was transmitted to Central's `POST /api/gps` and persisted in edge SQLite.
+4. **Deterministic Deduplication & Evidence Archival**:
+   - Central ingested candidate packages via `POST /api/central/events`.
+   - Haversine deduplication verified candidate distance against existing records, merging multiple observations within 10 meters into authoritative pothole `POT-000002`.
+   - Canonical 15.0-second MP4 evidence clips (450 frames @ 30 FPS, 5s pre-event + 10s post-event) were staged on disk and uploaded to Google Drive.
+5. **Dashboard Verification**:
+   The production React 18 dashboard rendered verified defect markers and live vehicle breadcrumbs with zero runtime errors.
 
 ---
 
@@ -1645,8 +1664,8 @@ RAAHI has been validated using a physical hardware testbed connecting a Samsung 
 
 While RAAHI Central provides a deterministic aggregation and GIS platform, several constraints apply to the current prototype:
 
-1. **Prototype Deployment Architecture**:
-   Central is implemented as a single-instance development server on Node.js and MongoDB, without distributed failover or horizontal autoscaling.
+1. **Single-Node Cloud Deployment**:
+   Central is currently deployed as a single-instance systemd service on an Azure Standard_B2ats_v2 VM (2 vCPU, 1 GiB RAM). While systemd provides automated local process crash recovery and MongoDB Atlas handles database failover, the application tier operates without horizontal multi-node autoscaling.
 
 2. **Synchronous Google Drive Upload**:
    Evidence clip uploads in `POST /api/central/evidence/upload` invoke `googleDriveService.uploadEvidenceClip()` synchronously within the HTTP route handler. Under poor network conditions or Google API throttling, the HTTP response time can extend until the cloud upload completes or times out.
@@ -1683,47 +1702,116 @@ The following architectural enhancements are planned for transition from the cur
 
 ---
 
-# 30. Installation
+# 30. Production Deployment Architecture
 
-Follow these steps to set up RAAHI Central on a local server or development workstation.
+RAAHI Central is deployed in production on Microsoft Azure, isolated from direct public internet exposure by an Azure Network Security Group (NSG) and published securely via a Cloudflare Zero-Trust Tunnel.
+
+```
++-------------------------------------------------------------------------+
+|                  AZURE & CLOUDFLARE PRODUCTION DEPLOYMENT               |
+|                                                                         |
+|  [ Public Client / Edge Nodes ]                                         |
+|    * https://raahi.feminismindia.com  (Primary Canonical Production)    |
+|    * https://raahi.ujjwalraj.online   (Secondary Deployment Alias)      |
+|                                │                                        |
+|                                ▼ HTTPS (Port 443)                       |
+|  [ Cloudflare Edge Network ]                                            |
+|    * Anycast DNS, SSL Termination, DDoS Mitigation                      |
+|    * Tunnel Name: 'RAAHI-Central'                                       |
+|                                │                                        |
+|                                ▼ Encrypted QUIC/HTTP2 Tunnel            |
+|  [ Azure Cloud: Central India ]                                         |
+|    * Resource Group: RAAHI-Central-RG                                   |
+|    * VM Name: raahi-central (Standard_B2ats_v2: 2 vCPU, 1 GiB RAM)      |
+|    * Public IP: 20.235.104.3 | Private IP: 172.16.0.4                   |
+|    * Azure NSG: Port 22 (SSH) Only | Port 5001 CLOSED to Public         |
+|    * Systemd Connector: cloudflared.service (v2026.9.1)                 |
+|                                │                                        |
+|                                ▼ Loopback: http://localhost:5001        |
+|  [ RAAHI Central Node.js Server ]                                       |
+|    * Systemd Unit: raahi-central.service (User: raahiadmin)             |
+|    * Working Directory: ~/RAAHI-Central/raahi-pothole-detection/dashboard|
+|    * Runtime: Node.js v22.23.2 | npm v10.9.8                            |
+|                                │                                        |
+|                                ▼ TLS Over TCP                           |
+|  [ Managed Database: MongoDB Atlas ]                                    |
+|    * Cluster: Multi-tenant Atlas Cluster                                |
+|    * Database Name: 'raahi'                                             |
++-------------------------------------------------------------------------+
+```
+
+### Production Specification Matrix
+
+| Deployment Dimension | Production Specification |
+| :--- | :--- |
+| **Cloud Provider** | Microsoft Azure (Azure for Students Subscription) |
+| **Resource Group** | `RAAHI-Central-RG` |
+| **Virtual Machine Name** | `raahi-central` |
+| **Azure Region** | Central India |
+| **Operating System** | Ubuntu Server 24.04 LTS x64 Gen2 (Kernel: `6.17.0-1022-azure`) |
+| **VM Instance Size** | `Standard_B2ats_v2` (2 vCPU, 1.0 GiB RAM) |
+| **Azure Public IP** | `20.235.104.3` |
+| **Azure Private IP** | `172.16.0.4` |
+| **SSH Management User** | `raahiadmin` |
+| **Azure Network Security Group** | Port 22 (SSH) open; **Port 5001 is private and closed to the public** |
+| **Application Runtime** | Node.js `v22.23.2`, npm `v10.9.8` |
+| **Application Repository** | `~/RAAHI-Central/raahi-pothole-detection/dashboard` |
+| **Database Tier** | MongoDB Atlas remote managed cluster (Database: `raahi`) |
+| **Edge Ingress Proxy** | Cloudflare Tunnel (`RAAHI-Central`, `cloudflared` v2026.9.1) |
+| **Service Supervisor** | Linux systemd (`raahi-central.service` + `cloudflared.service`) |
+| **Canonical Public Hostname** | **`https://raahi.feminismindia.com`** |
+| **Secondary Public Alias** | **`https://raahi.ujjwalraj.online`** *(alias; may expire upon domain renewal)* |
+
+### Production Deployment Verification Summary
+
+All components of the production architecture have been verified operational:
+- **Local Loopback (`http://localhost:5001`)**: Responds with HTTP 200 serving compiled React 18 production bundle.
+- **Health Diagnostic (`/api/status`)**: Reports `detectionSystem: "Online"` with active device state.
+- **MongoDB Atlas Connectivity**: Reports `connected: true`, `readyState: 1`, `databaseName: "raahi"`.
+- **Authoritative Data Routes (`/api/potholes`)**: Returns verified incident records.
+- **Public Domain Routing**: Both `https://raahi.feminismindia.com` and `https://raahi.ujjwalraj.online` return HTTP 200.
+- **Tunnel Resilience**: `cloudflared.service` verified active with healthy tunnel connector replica.
+- **Process Supervision**: `raahi-central.service` verified active, enabled at boot, with automated crash recovery.
+
+---
+
+# 31. Local Installation & Development Setup
+
+Follow these steps to set up RAAHI Central locally for development or testing.
 
 ### Prerequisites
-- **Node.js**: v18.0.0 or higher
+- **Node.js**: v18.0.0 or higher (v22.x recommended)
 - **npm**: v9.0.0 or higher
-- **MongoDB**: Community Edition v7.0 or higher (running locally on port `27017`)
+- **MongoDB**: Community Edition v7.0+ or a free MongoDB Atlas cluster
 - **Git** & **Git LFS**: Installed and initialized
 
 ### Step 1: Clone the Repository
 ```bash
 git clone https://github.com/iUjjwalRaj/RAAHI-Central.git
 cd RAAHI-Central
-```
-
-### Step 2: Install Central Backend Dependencies
-```bash
-cd raahi-pothole-detection/dashboard/server
-npm install
-```
-
-### Step 3: Install Central Dashboard Dependencies
-```bash
-cd /Users/ujjwalraj/Desktop/RAAHI22/raahi-pothole-detection/dashboard
-npm install
-```
-
-### Step 4: Verify Git LFS Binary Tracking
-```bash
-cd /Users/ujjwalraj/Desktop/RAAHI22
+git lfs install
 git lfs pull
 ```
 
+### Step 2: Install Dashboard & Server Dependencies
+```bash
+cd raahi-pothole-detection/dashboard
+npm install
+```
+
+### Step 3: Build the Frontend Production Bundle
+```bash
+npm run build
+```
+*Compiles the React 18 client application into `dashboard/dist`, ready for Express static serving.*
+
 ---
 
-# 31. Environment Configuration
+# 32. Environment Configuration
 
-RAAHI Central requires environment configuration for server networking, database connectivity, and Google Drive cloud evidence storage.
+RAAHI Central reads its configuration from `dashboard/.env` in development, or the systemd environment file in production.
 
-Create or update the `.env` file in `raahi-pothole-detection/dashboard/server/.env`:
+Create or update `raahi-pothole-detection/dashboard/.env`:
 
 ```bash
 # =================================================================
@@ -1733,110 +1821,162 @@ Create or update the `.env` file in `raahi-pothole-detection/dashboard/server/.e
 # Server Port (Default: 5001)
 PORT=5001
 
-# MongoDB Connection String (Local Development)
-MONGODB_URI=mongodb://127.0.0.1:27017/raahi_central
+# MongoDB Connection String (Atlas or Local)
+# In production, uses remote MongoDB Atlas connection string with database 'raahi'
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/raahi?retryWrites=true&w=majority
+
+# Spatial Deduplication Proximity Threshold (Meters)
+POTHOLE_DEDUP_RADIUS_METERS=10
+
+# Reverse Geocoding Configuration
+GEOCODING_PROVIDER=nominatim
+GEOCODING_USER_AGENT=RAAHI-Central/1.0
+GEOCODING_TIMEOUT_MS=3000
 
 # =================================================================
 # Google Drive API Configuration (OAuth 2.0)
 # =================================================================
-# Obtain these credentials from Google Cloud Console:
-# APIs & Services -> Credentials -> OAuth 2.0 Client IDs
-
-GOOGLE_DRIVE_CLIENT_ID=your_oauth_client_id.apps.googleusercontent.com
-GOOGLE_DRIVE_CLIENT_SECRET=your_oauth_client_secret
+GOOGLE_DRIVE_CLIENT_ID=your_client_id.apps.googleusercontent.com
+GOOGLE_DRIVE_CLIENT_SECRET=your_client_secret
 GOOGLE_DRIVE_REDIRECT_URI=http://localhost:5001/api/dev/auth/google/callback
-
-# Target Google Drive Folder Name for Video Evidence
-GOOGLE_DRIVE_FOLDER_NAME=RAAHI-Evidence-Storage
+GOOGLE_DRIVE_REFRESH_TOKEN=your_refresh_token
+GOOGLE_DRIVE_FOLDER_ID=your_drive_folder_id
+GOOGLE_DRIVE_SHARE_PUBLIC=true
 ```
 
-> [!TIP]
-> **Local Fallback Mode**: If Google Drive credentials are not configured, Central operates in local fallback mode: evidence clips are saved to `videos/evidence/` and served directly via `http://localhost:5001/evidence/:fileName`.
+> [!IMPORTANT]
+> **Secret Protection**: The production `.env` file on the Azure VM is owned by `raahiadmin` with `chmod 600` permissions. Connection strings, passwords, and OAuth secrets are strictly excluded from version control via `.gitignore`.
 
 ---
 
-# 32. Startup Instructions
+# 33. Production Persistence & Service Management
 
-Follow these commands to launch the complete RAAHI Central backend and dashboard.
+In production on the Azure VM, RAAHI Central is **never run manually in a temporary terminal**. Instead, it is managed as a persistent system-level daemon using `systemd`.
 
-### Step 1: Start MongoDB
-Ensure MongoDB is running locally:
-```bash
-# macOS (Homebrew)
-brew services start mongodb-community@7.0
+### Systemd Service Configuration (`/etc/systemd/system/raahi-central.service`)
 
-# Linux (systemd)
-sudo systemctl start mongod
+```ini
+[Unit]
+Description=RAAHI Central Municipal Backend and Dashboard
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=raahiadmin
+Group=raahiadmin
+WorkingDirectory=/home/raahiadmin/RAAHI-Central/raahi-pothole-detection/dashboard
+EnvironmentFile=/home/raahiadmin/RAAHI-Central/raahi-pothole-detection/dashboard/.env
+Environment=NODE_ENV=production
+Environment=PATH=/usr/bin:/usr/local/bin:/bin
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5s
+KillMode=control-group
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=raahi-central
+
+[Install]
+WantedBy=multi-user.target
 ```
 
-### Step 2: Start Central Backend Server (Port 5001)
-```bash
-cd /Users/ujjwalraj/Desktop/RAAHI22/raahi-pothole-detection/dashboard/server
-npm start
-```
-*The server will bind to `http://localhost:5001` and output connection logs.*
+### Verified Operational Properties Provided by Systemd
 
-### Step 3: Start Central Municipal Dashboard (Port 5173)
-In a separate terminal window:
-```bash
-cd /Users/ujjwalraj/Desktop/RAAHI22/raahi-pothole-detection/dashboard
-npm run dev
-```
-*Vite will launch the dashboard at `http://localhost:5173`.*
+1. **Automatic Boot Launch**: Central starts automatically when the Azure VM boots without human intervention.
+2. **No Interactive Session Dependency**: The server runs independently in the background; closing SSH terminal windows does not interrupt execution.
+3. **Automated Crash Recovery**: If the Node process encounters an uncaught fatal exception or is terminated, systemd restarts it within 5 seconds.
+4. **Coordinated Ingress**: `cloudflared.service` runs alongside Central under systemd, ensuring public accessibility is preserved across system reboots.
+5. **Centralized Logging**: All stdout/stderr logs are routed to `systemd-journald` with structured timestamps.
 
-### Step 4: Verify Backend Health
-Verify that Central is operational:
+---
+
+# 34. Running in Production & Operational Runbook
+
+Operators and developers **do NOT need to SSH into the VM or run `npm start` manually** during normal operation. The platform runs autonomously.
+
+For system administration, use standard systemd management commands:
+
+### Service Inspection & Status
 ```bash
-curl http://localhost:5001/api/status
+# Check Central service status, memory usage, and recent logs
+sudo systemctl status raahi-central
+
+# Check Cloudflare tunnel status and connector health
+sudo systemctl status cloudflared
+
+# Verify service is enabled at system boot
+sudo systemctl is-enabled raahi-central
 ```
-Expected output:
-```json
-{
-  "status": "ONLINE",
-  "database": { "connected": true }
-}
+
+### Live Log Streaming
+```bash
+# Stream real-time Central backend logs
+sudo journalctl -u raahi-central -f
+
+# Stream real-time Cloudflare Tunnel logs
+sudo journalctl -u cloudflared -f
+
+# View logs from a specific timeframe
+sudo journalctl -u raahi-central --since "1 hour ago"
+```
+
+### Service Lifecycle Controls
+```bash
+# Restart Central backend (e.g., after pulling Git updates or changing .env)
+sudo systemctl restart raahi-central
+
+# Stop service cleanly
+sudo systemctl stop raahi-central
+
+# Start service
+sudo systemctl start raahi-central
 ```
 
 ---
 
-# 33. Troubleshooting
+# 35. Troubleshooting
 
-Common development and operational issues with their resolutions:
+### Production Diagnostics
 
-1. **MongoDB Connection Failure (`ECONNREFUSED 127.0.0.1:27017`)**:
-   - Cause: MongoDB service is not running.
-   - Fix: Start MongoDB via `brew services start mongodb-community@7.0` or `mongod`. Central will run in degraded mode and return HTTP 503 on database routes if offline.
+1. **Service Not Running (`systemctl status raahi-central` shows failed)**:
+   - Check journal logs: `sudo journalctl -u raahi-central -n 50 --no-pager`.
+   - Verify `.env` syntax and MongoDB Atlas credentials.
+   - Verify port 5001 is not occupied by a zombie process: `sudo lsof -i :5001`.
 
-2. **Port Conflict on Port 5001 or 5173**:
-   - Cause: A previous instance of Node.js or Vite is still bound to the port.
-   - Fix: Locate and terminate the occupying process:
-     ```bash
-     lsof -i :5001
-     kill -9 <PID>
-     ```
+2. **Cloudflare Tunnel Returns 502 Bad Gateway**:
+   - Cause: Central backend is stopped or not listening on `localhost:5001`.
+   - Fix: Inspect Central status: `sudo systemctl status raahi-central`. Restart if needed: `sudo systemctl restart raahi-central`.
 
-3. **Google Drive Upload Warnings (`Google Drive not authenticated`)**:
-   - Cause: OAuth credentials are unconfigured or token has expired.
-   - Fix: Authenticate Central by opening `http://localhost:5001/api/dev/auth/google/login` in your browser and completing the Google consent flow. Note that Central continues to function without Drive by serving evidence clips locally.
+3. **MongoDB Atlas Connection Timeout / Refusal**:
+   - Cause: Azure VM outbound IP (`20.235.104.3`) is not allowlisted in MongoDB Atlas Network Access rules.
+   - Fix: Ensure `20.235.104.3/32` (or authorized VPC/IP block) is allowlisted in the Atlas console under Network Security.
 
-4. **Missing Evidence Directory Permissions**:
-   - Cause: The `videos/evidence/` directory cannot be created or written to.
-   - Fix: Ensure the directory exists and has write permissions:
-     ```bash
-     mkdir -p /Users/ujjwalraj/Desktop/RAAHI22/raahi-pothole-detection/videos/evidence
-     chmod 755 /Users/ujjwalraj/Desktop/RAAHI22/raahi-pothole-detection/videos/evidence
-     ```
+4. **Frontend Dashboard Blank or ReferenceError**:
+   - Cause: Outdated bundle in `dist/`.
+   - Fix: Rebuild client application via `cd ~/RAAHI-Central/raahi-pothole-detection/dashboard && npm run build`, then restart: `sudo systemctl restart raahi-central`.
+
+### Local Development Diagnostics
+
+1. **Port Conflict on Port 5001**:
+   ```bash
+   lsof -i :5001
+   kill -9 <PID>
+   ```
+
+2. **Google Drive Upload Warnings (`Google Drive not authenticated`)**:
+   - Central continues functioning in local fallback mode by saving evidence clips locally to `videos/evidence/`. Complete the OAuth flow at `http://localhost:5001/api/dev/auth/google/login` if Drive synchronization is desired.
 
 ---
 
-# 34. Repository / GitHub
+# 36. Repository / GitHub
 
 RAAHI Central is version-controlled on GitHub as part of Project RAAHI.
 
 - **GitHub Repository**: `https://github.com/iUjjwalRaj/RAAHI-Central.git`
 - **Primary Branch**: `main`
-- **Local Working Directory**: `/Users/ujjwalraj/Desktop/RAAHI22`
 - **Edge Companion Repository**: `https://github.com/iUjjwalRaj/RAAHI-Edge.git`
+- **Primary Production URL**: `https://raahi.feminismindia.com`
 
 ### Binary Asset Handling (Git LFS)
 Large model weights and pre-trained perception assets from earlier development are tracked using Git Large File Storage (Git LFS) in `.gitattributes`. To ensure all binary assets are present after cloning:
@@ -1847,19 +1987,22 @@ git lfs pull
 
 ---
 
-# 35. Technical Glossary
+# 37. Technical Glossary
 
 - **Candidate Event**: A staged edge observation stored in `candidate_events` as an audit record prior to deduplication.
 - **Haversine Formula**: Spherical trigonometric equation calculating great-circle distances between GPS coordinates.
 - **Spatial Deduplication**: Deterministic algorithm matching defect coordinates within 10 meters to prevent duplicate records.
 - **Multi-Bus Correlation**: Correlation engine verifying traffic reports across buses within a 50m / 10-minute window.
 - **Evidence Clip**: 15.0-second MP4 file (5 seconds before the event and 10 seconds after the event, $t_0 - 5.0\text{s}$ to $t_0 + 10.0\text{s} = 450$ frames @ 30 FPS) providing visual proof.
-- **GNSS / GPS**: Vehicle satellite receiver delivering telemetry at ~1 Hz.
+- **GNSS / GPS**: Vehicle satellite receiver delivering telemetry at ~1 Hz cadence.
 - **Zero Central AI**: Invariant that Central performs strictly zero neural network or VLM inference, remaining deterministic.
+- **Cloudflare Tunnel**: Zero-Trust outbound encrypted tunnel establishing secure public ingress without opening public inbound firewall ports.
+- **Azure NSG**: Network Security Group enforcing cloud perimeter isolation.
+- **Systemd Production Persistence**: OS-level daemon supervisor providing boot-up launch and automated 5-second crash recovery.
 
 ---
 
-# 36. Final Architecture Summary
+# 38. Final Architecture Summary
 
 Project RAAHI establishes a strict, clean division of responsibility between on-vehicle edge intelligence and centralized municipal fleet aggregation:
 
@@ -1869,22 +2012,24 @@ Project RAAHI establishes a strict, clean division of responsibility between on-
 |                                                                         |
 |  1. RAAHI-EDGE (Vehicle Tier):                                          |
 |     * Local camera stream acquisition (Samsung Galaxy S23 FE via RTSP)  |
-|     * Hardware-accelerated dual YOLO11n object detection                |
+|     * Hardware-accelerated dual YOLO11n object detection (MPS/NPU)      |
 |     * On-device ByteTrack multi-object tracking                         |
 |     * Edge traffic density & speed estimation                           |
 |     * Circular ring buffer evidence slicing (15s: 5s pre + 10s post)    |
-|     * GPS association (~1 Hz telemetry)                                 |
+|     * GPS association (~1 Hz telemetry associated at t0)                |
 |     * Local SQLite buffering for offline resilience                     |
 |                                                                         |
-|  2. RAAHI-CENTRAL (Server & GIS Tier):                                  |
+|  2. RAAHI-CENTRAL (Cloud Tier - Azure & Cloudflare):                    |
+|     * Azure Ubuntu 24.04 VM running persistent systemd service          |
+|     * Cloudflare Zero-Trust Tunnel (raahi.feminismindia.com)            |
 |     * Strictly ZERO AI, VLM, LLM, or YOLO inference                     |
 |     * Defensive schema validation & idempotency checks                  |
 |     * Candidate event staging & audit trail ('candidate_events')        |
 |     * Deterministic 10-meter Haversine spatial deduplication            |
 |     * Deterministic 50m / 10-minute multi-bus traffic correlation       |
-|     * Authoritative civic state persistence ('potholes', 'traffic')     |
+|     * Authoritative civic state persistence in MongoDB Atlas ('raahi')  |
 |     * Request-driven video evidence storage via Google Drive & local disk|
-|     * Leaflet GIS municipal dashboard with near-real-time polling       |
+|     * Compiled React 18 + Leaflet GIS municipal command center         |
 +-------------------------------------------------------------------------+
 ```
 
