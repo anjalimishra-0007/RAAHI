@@ -12,15 +12,17 @@ import urllib.request
 import urllib.error
 from typing import Dict, Any, Optional
 
+from utils.config import resolve_central_url
+
 
 class CentralClient:
     """
     Clean client abstraction for central RAAHI system communication.
-    Communicates with canonical RAAHI22 Central API on http://localhost:5001.
+    Supports deterministic URL precedence (Constructor -> Env -> config.yaml -> localhost).
     """
 
-    def __init__(self, central_base_url: str = "http://localhost:5001"):
-        self.central_base_url = central_base_url.rstrip("/")
+    def __init__(self, central_base_url: Optional[str] = None):
+        self.central_base_url = resolve_central_url(central_base_url)
 
     def check_central_health(self) -> Dict[str, Any]:
         """Checks if central server is reachable and active."""
@@ -42,6 +44,17 @@ class CentralClient:
         Dispatches candidate event to the canonical central ingestion endpoint:
         POST /api/central/events
         """
+        lat = float(event_data["latitude"]) if event_data.get("latitude") is not None else 0.0
+        lon = float(event_data["longitude"]) if event_data.get("longitude") is not None else 0.0
+
+        # Guard against zero-GPS unreferenced events polluting central GIS data
+        if (lat == 0.0 and lon == 0.0) or event_data.get("central_delivery_status") == "LOCAL_AUDIT_ONLY":
+            return {
+                "success": False,
+                "skipped": True,
+                "error": "Zero-GPS event (0.0, 0.0) marked LOCAL_AUDIT_ONLY; withheld from Central GIS"
+            }
+
         url = f"{self.central_base_url}/api/central/events"
 
         # 1. Parse bounding box
@@ -173,6 +186,16 @@ class TransmissionQueueWorker:
         """Starts background worker thread."""
         if self.running:
             return
+
+        # Recover orphaned IN_FLIGHT transmissions on cold start
+        try:
+            if hasattr(self.db, "recover_stale_in_flight"):
+                recovered = self.db.recover_stale_in_flight(is_cold_start=True)
+                if recovered > 0:
+                    self.db.log_system_message("INFO", "NETWORK", f"Recovered {recovered} orphaned IN_FLIGHT transmission(s) on cold start")
+        except Exception as e:
+            print(f"[QueueWorker] Error recovering cold-start transmissions: {e}")
+
         self.running = True
         self.thread = threading.Thread(target=self._worker_loop, daemon=True)
         self.thread.start()
@@ -186,6 +209,12 @@ class TransmissionQueueWorker:
     def _worker_loop(self):
         while self.running:
             try:
+                # 0. Recover stale IN_FLIGHT records (older than 120s) during normal operation
+                if hasattr(self.db, "recover_stale_in_flight"):
+                    recovered = self.db.recover_stale_in_flight(stale_threshold_sec=120.0, is_cold_start=False)
+                    if recovered > 0:
+                        self.db.log_system_message("INFO", "NETWORK", f"Recovered {recovered} stale IN_FLIGHT transmission(s) (>120s)")
+
                 # 1. Fetch pending transmission jobs from SQLite
                 pending_items = self.db.get_pending_transmissions(limit=5)
                 if pending_items:
@@ -201,7 +230,10 @@ class TransmissionQueueWorker:
 
                             # Send canonical event package to Central
                             res = self.client.send_candidate_event(item)
-                            if res.get("success"):
+                            if res.get("skipped"):
+                                self.db.update_queue_status(eid, "LOCAL_AUDIT_ONLY", error=res.get("error"))
+                                self.db.log_system_message("INFO", "NETWORK", f"Event {eid} withheld from Central GIS: {res.get('error')}")
+                            elif res.get("success"):
                                 # If evidence clip exists, upload actual binary MP4
                                 clip_path = item.get("evidence_clip_path")
                                 if clip_path and os.path.exists(clip_path):

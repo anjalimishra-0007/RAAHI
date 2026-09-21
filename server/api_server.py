@@ -41,7 +41,7 @@ coordinator = PipelineCoordinator(
     model_path="models/pothole_yolo11n.pt",
     db_path="data/raahi_edge.db",
     evidence_dir="data/evidence",
-    central_url="http://localhost:5001",
+    central_url=None,  # Resolves dynamically: constructor -> CENTRAL_URL env -> config.yaml -> localhost:5001
     enable_traffic=True,
     traffic_model_path="models/yolo11n.pt",
     traffic_conf_threshold=0.30,
@@ -73,6 +73,7 @@ class SettingsPayload(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     print("[API Server] RAAHI-Edge API server started on port 5050")
+    print(f"[API Server] Outbound Central Endpoint: {coordinator.central_url}")
     # Auto-start pipeline on boot
     coordinator.start()
 

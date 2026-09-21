@@ -187,12 +187,20 @@ class EdgeDatabase:
                     traffic_telemetry_json
                 ))
 
-                # Also insert into transmission queue with RECORDING status
-                # Will transition to PENDING once the evidence MP4 is finalized on disk
+                # Also insert into transmission queue
+                # Zero-GPS events are preserved locally as LOCAL_AUDIT_ONLY and never queued for Central GIS
+                lat_val = package.get("latitude", 0.0)
+                lon_val = package.get("longitude", 0.0)
+                is_unref = (
+                    package.get("centralDelivery", {}).get("status") == "LOCAL_AUDIT_ONLY"
+                    or package.get("verification", {}).get("status") == "GEOMETRY_UNREFERENCED"
+                    or (lat_val == 0.0 and lon_val == 0.0)
+                )
+                initial_status = "LOCAL_AUDIT_ONLY" if is_unref else "RECORDING"
                 cur.execute("""
                     INSERT OR IGNORE INTO transmission_queue (event_id, status)
-                    VALUES (?, 'RECORDING')
-                """, (package["eventId"],))
+                    VALUES (?, ?)
+                """, (package["eventId"], initial_status))
 
                 conn.commit()
                 return True
@@ -343,6 +351,13 @@ class EdgeDatabase:
                     WHERE event_id = ?
                 """, (now_iso, error or "Transmission error", event_id))
                 cur.execute("UPDATE events SET central_delivery_status = 'FAILED' WHERE event_id = ?", (event_id,))
+            elif status == "LOCAL_AUDIT_ONLY":
+                cur.execute("""
+                    UPDATE transmission_queue
+                    SET status = 'LOCAL_AUDIT_ONLY', last_attempt = ?, last_error = ?
+                    WHERE event_id = ?
+                """, (now_iso, error or "Zero-GPS event withheld from Central GIS", event_id))
+                cur.execute("UPDATE events SET central_delivery_status = 'LOCAL_AUDIT_ONLY' WHERE event_id = ?", (event_id,))
             else:
                 cur.execute("""
                     UPDATE transmission_queue
@@ -351,6 +366,82 @@ class EdgeDatabase:
                 """, (status, now_iso, event_id))
             conn.commit()
             conn.close()
+
+    def recover_stale_in_flight(
+        self,
+        stale_threshold_sec: float = 120.0,
+        is_cold_start: bool = False
+    ) -> int:
+        """
+        Safely recovers stranded or interrupted IN_FLIGHT transmissions back to PENDING.
+        
+        - If is_cold_start is True: recovers all IN_FLIGHT items back to PENDING (no worker active).
+        - If is_cold_start is False: recovers only IN_FLIGHT items where last_attempt <= NOW - stale_threshold_sec.
+        - Preserves attempts count and appends audit message to last_error.
+        - Updates events.central_delivery_status to PENDING.
+        - Returns count of recovered items.
+        """
+        with self.lock:
+            conn = self._get_connection()
+            cur = conn.cursor()
+            
+            if is_cold_start:
+                cur.execute("""
+                    SELECT event_id FROM transmission_queue
+                    WHERE status = 'IN_FLIGHT'
+                """)
+                stale_ids = [row[0] for row in cur.fetchall()]
+                if not stale_ids:
+                    conn.close()
+                    return 0
+                
+                placeholders = ",".join("?" for _ in stale_ids)
+                cur.execute(f"""
+                    UPDATE transmission_queue
+                    SET status = 'PENDING',
+                        last_error = CASE 
+                            WHEN last_error IS NULL OR last_error = '' THEN 'Recovered from orphaned IN_FLIGHT on cold start'
+                            ELSE last_error || ' | Recovered from orphaned IN_FLIGHT on cold start'
+                        END
+                    WHERE event_id IN ({placeholders})
+                """, stale_ids)
+                cur.execute(f"""
+                    UPDATE events
+                    SET central_delivery_status = 'PENDING'
+                    WHERE event_id IN ({placeholders})
+                """, stale_ids)
+            else:
+                cutoff_dt = sqlite3.datetime.datetime.now() - sqlite3.datetime.timedelta(seconds=stale_threshold_sec)
+                cutoff_iso = cutoff_dt.isoformat()
+                cur.execute("""
+                    SELECT event_id FROM transmission_queue
+                    WHERE status = 'IN_FLIGHT' AND (last_attempt IS NULL OR last_attempt <= ?)
+                """, (cutoff_iso,))
+                stale_ids = [row[0] for row in cur.fetchall()]
+                if not stale_ids:
+                    conn.close()
+                    return 0
+                
+                placeholders = ",".join("?" for _ in stale_ids)
+                cur.execute(f"""
+                    UPDATE transmission_queue
+                    SET status = 'PENDING',
+                        last_error = CASE 
+                            WHEN last_error IS NULL OR last_error = '' THEN 'Recovered from stale IN_FLIGHT (>120s)'
+                            ELSE last_error || ' | Recovered from stale IN_FLIGHT (>120s)'
+                        END
+                    WHERE event_id IN ({placeholders})
+                """, stale_ids)
+                cur.execute(f"""
+                    UPDATE events
+                    SET central_delivery_status = 'PENDING'
+                    WHERE event_id IN ({placeholders})
+                """, stale_ids)
+                
+            conn.commit()
+            conn.close()
+            return len(stale_ids)
+
 
     # ------------------ TELEMETRY & STATS ------------------
 

@@ -37,3 +37,9 @@ display:
 
 logging:
   level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+
+central:
+  # Canonical Central uplink endpoint. Defaults to localhost for local development.
+  # Can be overridden via CENTRAL_URL environment variable or runtime argument.
+  url: "http://localhost:5001"
+

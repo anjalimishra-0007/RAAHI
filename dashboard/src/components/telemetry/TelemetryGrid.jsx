@@ -21,11 +21,11 @@ export function TelemetryGrid({
     <>
       <div className="subsystems-grid">
         <PerceptionTelemetry
-          metrics={metrics}
+          metrics={metrics || {}}
           aiLatencyMs={aiLatencyMs}
           processingFps={processingFps}
         />
-        <TrafficTelemetry traffic={traffic} />
+        <TrafficTelemetry traffic={traffic || {}} />
       </div>
 
       <div className="subsystems-grid">

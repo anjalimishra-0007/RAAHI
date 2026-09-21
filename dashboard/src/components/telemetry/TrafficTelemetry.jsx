@@ -13,17 +13,18 @@ const STATE_STYLES = {
 /**
  * Traffic Telemetry: ByteTrack vehicle tracking, road ROI density, virtual line flow, congestion state.
  */
-export function TrafficTelemetry({ traffic = {} }) {
-  const state = traffic.state || 'FREE';
+export function TrafficTelemetry({ traffic }) {
+  const t = traffic || {};
+  const state = t.state || 'FREE';
   const style = STATE_STYLES[state] || STATE_STYLES.FREE;
 
-  const occupancyPct = traffic.occupancyRatio != null ? (traffic.occupancyRatio * 100).toFixed(1) : '0.0';
-  const flowVpm = traffic.flowVpm != null ? traffic.flowVpm.toFixed(1) : '0.0';
-  const activeVehicles = traffic.activeVehicles ?? 0;
-  const uniqueSeen = traffic.uniqueVehiclesSeen ?? 0;
-  const vehFps = traffic.vehicleInferenceFps ?? 0;
-  const vehLatency = traffic.vehicleLatencyMs ?? 0;
-  const byteTrackLatency = traffic.bytetrackLatencyMs ?? 0;
+  const occupancyPct = t.occupancyRatio != null ? (t.occupancyRatio * 100).toFixed(1) : '0.0';
+  const flowVpm = t.flowVpm != null ? t.flowVpm.toFixed(1) : '0.0';
+  const activeVehicles = t.activeVehicles ?? 0;
+  const uniqueSeen = t.uniqueVehiclesSeen ?? 0;
+  const vehFps = t.vehicleInferenceFps ?? 0;
+  const vehLatency = t.vehicleLatencyMs ?? 0;
+  const byteTrackLatency = t.bytetrackLatencyMs ?? 0;
 
   return (
     <MetricCard
@@ -36,7 +37,7 @@ export function TrafficTelemetry({ traffic = {} }) {
       <div className="metric-row">
         <span className="metric-row-label">Active Tracked Vehicles:</span>
         <span className="metric-row-val mono" style={{ color: '#38bdf8' }}>
-          {activeVehicles} in frame ({traffic.vehiclesInRoi ?? 0} in ROI)
+          {activeVehicles} in frame ({t.vehiclesInRoi ?? 0} in ROI)
         </span>
       </div>
       <div className="metric-row">
@@ -48,7 +49,7 @@ export function TrafficTelemetry({ traffic = {} }) {
       <div className="metric-row">
         <span className="metric-row-label">Flow Rate:</span>
         <span className="metric-row-val mono">
-          {flowVpm} VPM ({traffic.flow10s ?? 0} / 10s)
+          {flowVpm} VPM ({t.flow10s ?? 0} / 10s)
         </span>
       </div>
       <div className="metric-row">

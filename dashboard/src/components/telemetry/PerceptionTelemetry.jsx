@@ -6,7 +6,8 @@ import { formatFps, formatLatency } from '../../utils/formatters';
 /**
  * Perception & AI Telemetry: MPS latency, throughput, detections, suppressions, ring buffer.
  */
-export function PerceptionTelemetry({ metrics = {}, aiLatencyMs, processingFps }) {
+export function PerceptionTelemetry({ metrics, aiLatencyMs, processingFps }) {
+  const m = metrics || {};
   return (
     <MetricCard
       icon={Cpu}
@@ -30,19 +31,19 @@ export function PerceptionTelemetry({ metrics = {}, aiLatencyMs, processingFps }
       <div className="metric-row">
         <span className="metric-row-label">Road Hazards Detected:</span>
         <span className="metric-row-val mono" style={{ color: 'var(--live-green)' }}>
-          {metrics.candidatesDetected || 0} Candidate Events
+          {m.candidatesDetected || 0} Candidate Events
         </span>
       </div>
       <div className="metric-row">
         <span className="metric-row-label">Spatial Suppressions:</span>
         <span className="metric-row-val mono" style={{ color: 'var(--text-muted)' }}>
-          {metrics.candidatesSuppressed || 0} Duplicates Suppressed
+          {m.candidatesSuppressed || 0} Duplicates Suppressed
         </span>
       </div>
       <div className="metric-row">
         <span className="metric-row-label">Rolling Ring Buffer:</span>
         <span className="metric-row-val mono">
-          {metrics.ringBufferFrames || 0} / 90 Frames (~3.0s memory)
+          {m.ringBufferFrames || 0} / 90 Frames (~3.0s memory)
         </span>
       </div>
     </MetricCard>

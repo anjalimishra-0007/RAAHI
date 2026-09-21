@@ -23,6 +23,7 @@ from transmission.central_client import CentralClient, TransmissionQueueWorker
 from traffic.vehicle_tracker import VehicleTracker
 from traffic.metrics import TrafficMetrics, TrackedVehicle
 from traffic.visualizer import draw_tracked_vehicles, draw_traffic_overlays
+from utils.config import resolve_central_url
 
 
 class PipelineCoordinator:
@@ -38,7 +39,7 @@ class PipelineCoordinator:
         model_path: str = "models/pothole_yolo11n.pt",
         db_path: str = "data/raahi_edge.db",
         evidence_dir: str = "data/evidence",
-        central_url: str = "http://localhost:5001",
+        central_url: Optional[str] = None,
         conf_threshold: float = 0.35,
         pre_buffer_sec: float = 5.0,
         post_buffer_sec: float = 10.0,
@@ -55,7 +56,7 @@ class PipelineCoordinator:
         self.model_path = model_path
         self.db_path = db_path
         self.evidence_dir = evidence_dir
-        self.central_url = central_url
+        self.central_url = resolve_central_url(central_url, log_source=True)
         self.conf_threshold = conf_threshold
         self.pre_buffer_sec = pre_buffer_sec
         self.post_buffer_sec = post_buffer_sec

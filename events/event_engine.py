@@ -127,6 +127,15 @@ class EventEngine:
         event_id = self.generate_event_id()
         now_iso = datetime.now(timezone.utc).isoformat()
 
+        has_valid_gps = not (lat == 0.0 and lon == 0.0)
+        verification_status = "PENDING_VERIFICATION" if has_valid_gps else "GEOMETRY_UNREFERENCED"
+        verification_reason = (
+            "Awaiting Central deterministic spatial & incident validation"
+            if has_valid_gps
+            else "No valid GPS fix available at detection time; preserved for local audit only."
+        )
+        delivery_status = "PENDING" if has_valid_gps else "LOCAL_AUDIT_ONLY"
+
         package = {
             "eventId": event_id,
             "eventType": event_type,
@@ -137,7 +146,7 @@ class EventEngine:
             "longitude": lon,
             "gpsAccuracy": gps_match.get("accuracy"),
             "gpsTimestamp": gps_match.get("gpsTimestamp"),
-            "isGpsFallback": gps_match.get("isFallback", False),
+            "isGpsFallback": gps_match.get("isFallback", False) or not has_valid_gps,
             "edgeModel": self.edge_model_name,
             "edgeConfidence": round(float(confidence), 3),
             "bbox": bbox,
@@ -151,13 +160,13 @@ class EventEngine:
                 "generated": False
             },
             "verification": {
-                "status": "PENDING_VERIFICATION",
+                "status": verification_status,
                 "centralModel": None,
                 "verifiedAt": None,
-                "reason": "Awaiting Central deterministic spatial & incident validation"
+                "reason": verification_reason
             },
             "centralDelivery": {
-                "status": "PENDING",
+                "status": delivery_status,
                 "attempts": 0,
                 "lastAttempt": None,
                 "centralEventId": None
@@ -208,6 +217,15 @@ class EventEngine:
                 "perClassCount": getattr(traffic_metrics, "per_class_count", {})
             }
 
+        has_valid_gps = not (lat == 0.0 and lon == 0.0)
+        verification_status = "PENDING_VERIFICATION" if has_valid_gps else "GEOMETRY_UNREFERENCED"
+        verification_reason = (
+            "Awaiting Central deterministic spatial & incident validation"
+            if has_valid_gps
+            else "No valid GPS fix available at detection time; preserved for local audit only."
+        )
+        delivery_status = "PENDING" if has_valid_gps else "LOCAL_AUDIT_ONLY"
+
         package = {
             "eventId": event_id,
             "eventType": event_type,
@@ -218,7 +236,7 @@ class EventEngine:
             "longitude": lon,
             "gpsAccuracy": gps_match.get("accuracy"),
             "gpsTimestamp": gps_match.get("gpsTimestamp"),
-            "isGpsFallback": gps_match.get("isFallback", False),
+            "isGpsFallback": gps_match.get("isFallback", False) or not has_valid_gps,
             "edgeModel": "yolo11n-bytetrack",
             "edgeConfidence": round(float(confidence), 3),
             "bbox": bbox,
@@ -233,13 +251,13 @@ class EventEngine:
                 "generated": False
             },
             "verification": {
-                "status": "PENDING_VERIFICATION",
+                "status": verification_status,
                 "centralModel": None,
                 "verifiedAt": None,
-                "reason": "Awaiting Central deterministic spatial & incident validation"
+                "reason": verification_reason
             },
             "centralDelivery": {
-                "status": "PENDING",
+                "status": delivery_status,
                 "attempts": 0,
                 "lastAttempt": None,
                 "centralEventId": None
