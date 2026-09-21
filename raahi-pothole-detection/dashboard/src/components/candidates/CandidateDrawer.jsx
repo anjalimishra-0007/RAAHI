@@ -49,7 +49,14 @@ export default function CandidateDrawer({
     ? new Date(candidate.timestamp).toLocaleString()
     : (candidate.createdAt ? new Date(candidate.createdAt).toLocaleString() : 'Recorded');
 
-  const hasEvidence = !!(candidate.evidenceReference && candidate.evidenceReference.trim() !== '');
+  const isCandidateDriveUrl = !!(candidate.videoUrl && (candidate.videoUrl.includes('drive.google.com') || candidate.videoUrl.includes('googleusercontent.com')));
+  const hasCandidateDrive = !!(candidate.driveFileId || candidate.driveWebViewLink || isCandidateDriveUrl);
+  const hasCandidateLocal = !hasCandidateDrive && !!((candidate.videoUrl && candidate.videoUrl.trim() !== '') || (candidate.evidenceReference && candidate.evidenceReference.trim() !== ''));
+  const hasEvidence = hasCandidateDrive || hasCandidateLocal;
+
+  const candidateEvidenceUrl = hasCandidateDrive
+    ? (candidate.driveWebViewLink || candidate.videoUrl)
+    : (candidate.videoUrl || (candidate.evidenceReference ? `/evidence/${candidate.evidenceReference}` : null));
   const isPromoted = !!candidate.promotedToPotholeId;
   const canPromote = !isPromoted;
 
@@ -227,12 +234,21 @@ export default function CandidateDrawer({
                   <Film style={{ width: 16, height: 16 }} />
                 </div>
                 <div>
-                  <b style={{ fontSize: '11px', color: '#f1f5f9', display: 'block' }}>Evidence Attached</b>
-                  <small style={{ fontSize: '9px', color: 'var(--muted)' }}>Visual capture from vehicle cameras</small>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <b style={{ fontSize: '11px', color: '#f1f5f9' }}>Evidence Attached</b>
+                    {hasCandidateDrive ? (
+                      <span className="real-tag" style={{ fontSize: '8px' }}>GOOGLE DRIVE</span>
+                    ) : hasCandidateLocal ? (
+                      <span className="real-tag" style={{ fontSize: '8px', background: 'rgba(56, 189, 248, 0.15)', borderColor: 'rgba(56, 189, 248, 0.4)', color: '#38bdf8' }}>LOCAL EVIDENCE</span>
+                    ) : null}
+                  </div>
+                  <small style={{ fontSize: '9px', color: 'var(--muted)' }}>
+                    {hasCandidateDrive ? 'Durable Google Drive video storage' : 'Staged locally on Central server'}
+                  </small>
                 </div>
               </div>
               <a
-                href={candidate.evidenceReference}
+                href={candidateEvidenceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="secondary"

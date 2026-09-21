@@ -74,7 +74,14 @@ export default function IncidentDrawer({
     ? new Date(incident.lastDetectedAt).toLocaleString()
     : 'Not recorded';
 
-  const hasEvidence = !!(incident.videoUrl && incident.videoUrl.trim() !== '');
+  const isDriveUrl = !!(incident.videoUrl && (incident.videoUrl.includes('drive.google.com') || incident.videoUrl.includes('googleusercontent.com')));
+  const hasDriveEvidence = !!(incident.driveFileId || incident.driveWebViewLink || isDriveUrl);
+  const hasLocalEvidence = !hasDriveEvidence && !!(incident.videoUrl && incident.videoUrl.trim() !== '');
+  const hasEvidence = hasDriveEvidence || hasLocalEvidence;
+
+  const evidenceOpenUrl = hasDriveEvidence
+    ? (incident.driveWebViewLink || incident.videoUrl)
+    : incident.videoUrl;
 
   // Municipal status options matching backend enum
   const statusOptions = [
@@ -402,9 +409,11 @@ export default function IncidentDrawer({
             <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               Visual Evidence
             </span>
-            {hasEvidence && (
+            {hasDriveEvidence ? (
               <span className="real-tag" style={{ fontSize: '8px' }}>GOOGLE DRIVE</span>
-            )}
+            ) : hasLocalEvidence ? (
+              <span className="real-tag" style={{ fontSize: '8px', background: 'rgba(56, 189, 248, 0.15)', borderColor: 'rgba(56, 189, 248, 0.4)', color: '#38bdf8' }}>LOCAL EVIDENCE</span>
+            ) : null}
           </div>
 
           {hasEvidence ? (
@@ -422,10 +431,12 @@ export default function IncidentDrawer({
                 Evidence Clip Available
               </b>
               <small style={{ display: 'block', color: 'var(--muted)', fontSize: '9px', marginBottom: '10px' }}>
-                A 5-second verified evidence video clip is stored and linked to this incident.
+                {hasDriveEvidence
+                  ? 'A 5-second verified evidence video clip is stored in Google Drive and linked to this incident.'
+                  : 'A 5-second verified evidence video clip is staged locally on Central and linked to this incident.'}
               </small>
               <a
-                href={incident.videoUrl}
+                href={evidenceOpenUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="primary full"

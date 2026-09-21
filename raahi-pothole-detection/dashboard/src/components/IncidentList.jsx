@@ -54,7 +54,9 @@ export default function IncidentList({ potholes = [], onSelect, loading = false,
           ? new Date(p.lastDetectedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           : (p.createdAt ? new Date(p.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recorded');
 
-        const hasEvidence = !!(p.videoUrl && p.videoUrl.trim() !== '');
+        const isListDriveUrl = !!(p.videoUrl && (p.videoUrl.includes('drive.google.com') || p.videoUrl.includes('googleusercontent.com')));
+        const hasListDrive = !!(p.driveFileId || p.driveWebViewLink || isListDriveUrl);
+        const hasListLocal = !hasListDrive && !!(p.videoUrl && p.videoUrl.trim() !== '');
 
         return (
           <button
@@ -68,7 +70,7 @@ export default function IncidentList({ potholes = [], onSelect, loading = false,
             <span className="incident-main">
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <b style={{ color: 'var(--text)', fontSize: '11px', letterSpacing: '0.02em' }}>{p.potholeId}</b>
-                {hasEvidence && (
+                {hasListDrive ? (
                   <span
                     style={{
                       display: 'inline-flex',
@@ -86,7 +88,25 @@ export default function IncidentList({ potholes = [], onSelect, loading = false,
                   >
                     <Film style={{ width: '9px', height: '9px' }} /> DRIVE VIDEO
                   </span>
-                )}
+                ) : hasListLocal ? (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                      fontSize: '8px',
+                      padding: '1px 5px',
+                      borderRadius: '4px',
+                      background: 'rgba(251, 146, 60, 0.15)',
+                      color: '#fb923c',
+                      border: '1px solid rgba(251, 146, 60, 0.35)',
+                      fontWeight: 700
+                    }}
+                    title="Local Staged Video Evidence"
+                  >
+                    <Film style={{ width: '9px', height: '9px' }} /> LOCAL VIDEO
+                  </span>
+                ) : null}
               </div>
               <small style={{ color: '#94a3b8', fontSize: '9px', marginTop: '2px', lineHeight: 1.4 }}>
                 {displayAddress}

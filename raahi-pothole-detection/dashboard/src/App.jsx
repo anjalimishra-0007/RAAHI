@@ -710,38 +710,47 @@ export default function App() {
                           </div>
 
                           {/* Evidence Strip */}
-                          <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <Film style={{ width: 15, height: 15, color: latestPothole.videoUrl ? '#38bdf8' : '#64748b' }} />
-                              <span style={{ fontSize: '10px', color: 'var(--muted)' }}>
-                                {latestPothole.videoUrl ? 'Google Drive Evidence Linked' : 'No evidence media linked'}
-                              </span>
-                            </div>
-                            {latestPothole.videoUrl ? (
-                              <a
-                                href={latestPothole.videoUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  fontSize: '10px',
-                                  fontWeight: 700,
-                                  color: '#38bdf8',
-                                  textDecoration: 'none',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  background: 'rgba(56, 189, 248, 0.12)',
-                                  padding: '4px 8px',
-                                  borderRadius: '5px',
-                                  border: '1px solid rgba(56, 189, 248, 0.3)'
-                                }}
-                              >
-                                View Evidence <ExternalLink style={{ width: 11, height: 11 }} />
-                              </a>
-                            ) : (
-                              <span style={{ fontSize: '9px', color: '#64748b' }}>None</span>
-                            )}
-                          </div>
+                          {(() => {
+                            const isLatestDriveUrl = !!(latestPothole.videoUrl && (latestPothole.videoUrl.includes('drive.google.com') || latestPothole.videoUrl.includes('googleusercontent.com')));
+                            const hasLatestDrive = !!(latestPothole.driveFileId || latestPothole.driveWebViewLink || isLatestDriveUrl);
+                            const hasLatestLocal = !hasLatestDrive && !!(latestPothole.videoUrl && latestPothole.videoUrl.trim() !== '');
+                            const latestUrl = hasLatestDrive ? (latestPothole.driveWebViewLink || latestPothole.videoUrl) : latestPothole.videoUrl;
+
+                            return (
+                              <div style={{ background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <Film style={{ width: 15, height: 15, color: (hasLatestDrive || hasLatestLocal) ? '#38bdf8' : '#64748b' }} />
+                                  <span style={{ fontSize: '10px', color: 'var(--muted)' }}>
+                                    {hasLatestDrive ? 'Google Drive Evidence Linked' : hasLatestLocal ? 'Local Evidence Staged' : 'No evidence media linked'}
+                                  </span>
+                                </div>
+                                {(hasLatestDrive || hasLatestLocal) ? (
+                                  <a
+                                    href={latestUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      fontSize: '10px',
+                                      fontWeight: 700,
+                                      color: '#38bdf8',
+                                      textDecoration: 'none',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      background: 'rgba(56, 189, 248, 0.12)',
+                                      padding: '4px 8px',
+                                      borderRadius: '5px',
+                                      border: '1px solid rgba(56, 189, 248, 0.3)'
+                                    }}
+                                  >
+                                    View Evidence <ExternalLink style={{ width: 11, height: 11 }} />
+                                  </a>
+                                ) : (
+                                  <span style={{ fontSize: '9px', color: '#64748b' }}>None</span>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {/* Action Button */}
                           <div style={{ marginTop: 'auto', paddingTop: '6px' }}>
@@ -1278,7 +1287,9 @@ function IncidentsPage({
             const displayAddress = p.address && p.address.trim() !== ''
               ? p.address
               : (p.location ? `${p.location.latitude?.toFixed(4)}, ${p.location.longitude?.toFixed(4)}` : 'Coordinates only');
-            const hasEvidence = !!(p.videoUrl && p.videoUrl.trim() !== '');
+            const isRowDriveUrl = !!(p.videoUrl && (p.videoUrl.includes('drive.google.com') || p.videoUrl.includes('googleusercontent.com')));
+            const hasRowDrive = !!(p.driveFileId || p.driveWebViewLink || isRowDriveUrl);
+            const hasRowLocal = !hasRowDrive && !!(p.videoUrl && p.videoUrl.trim() !== '');
 
             return (
               <button
@@ -1310,7 +1321,7 @@ function IncidentsPage({
                   <span className={`status-pill ${p.status}`}>{p.status}</span>
                 </span>
                 <span>
-                  {hasEvidence ? (
+                  {hasRowDrive ? (
                     <span
                       style={{
                         display: 'inline-flex',
@@ -1327,6 +1338,24 @@ function IncidentsPage({
                       title="Google Drive Video Available"
                     >
                       <Film style={{ width: 10, height: 10 }} /> Drive
+                    </span>
+                  ) : hasRowLocal ? (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        fontSize: '9px',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        background: 'rgba(251, 146, 60, 0.15)',
+                        color: '#fb923c',
+                        border: '1px solid rgba(251, 146, 60, 0.35)',
+                        fontWeight: 700
+                      }}
+                      title="Local Central Evidence Staged"
+                    >
+                      <Film style={{ width: 10, height: 10 }} /> Local
                     </span>
                   ) : (
                     <span style={{ color: '#64748b', fontSize: '9px' }}>None</span>
