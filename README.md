@@ -48,6 +48,44 @@
 
 ---
 
+## Quick Start (First-Run Setup & Launch)
+
+Prepare and start the complete local RAAHI Edge AI perception appliance in two commands:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/iUjjwalRaj/RAAHI-Edge.git
+cd RAAHI-Edge
+
+# 2. Automated first-run environment setup
+./setup.sh
+
+# 3. Launch local services
+./start.sh
+```
+
+### Operational Workflow:
+1. **Network Pairing**: Connect your Android phone (e.g., Samsung S23 FE) and Edge compute machine to the same Wi-Fi network or phone hotspot.
+2. **Configure RTSP**: In the RAAHI-Eye Android app, set the RTSP publishing target to the LAN IP reported by `./setup.sh`:
+   ```text
+   rtsp://<EDGE_LAN_IP>:8555/live
+   ```
+3. **Start Camera Feed**: Tap **Start Streaming** in the RAAHI-Eye app.
+4. **Open Operator Dashboard**: Browse to `http://localhost:5174` (or `http://localhost:5050`).
+5. **Verify Stream**: Confirm live 1080p video feed, pothole inference, and ByteTrack vehicle tracking in the dashboard.
+6. **Verify Central Uplink**: Confirm that detected road anomalies and traffic telemetry sync reliably with Central (`https://raahi.feminismindia.com`).
+
+### Verification & Testing:
+```bash
+# Run non-destructive pre-flight check
+./start.sh --check
+
+# Run complete automated regression test suite
+venv/bin/pytest tests/ -v
+```
+
+---
+
 # 1. RAAHI-Edge Overview
 
 ### 1.1 Executive Summary
@@ -1149,70 +1187,89 @@ RAAHI-Edge/
 
 # 30. Installation & Environment Setup
 
-### 30.1 Prerequisites
-- **Operating System**: macOS (Apple Silicon M1/M2/M3 recommended) or Linux (Ubuntu 22.04+).
-- **Python**: Version `3.10`, `3.11`, or `3.12`.
-- **Node.js**: Version `18+` or `20+` LTS.
-- **MediaMTX**: Lightweight open-source RTSP proxy server.
-- **FFmpeg**: Compiled with H.264 support (`brew install ffmpeg`).
+### 30.1 Recommended: Automated Setup Script
+The repository provides an automated, idempotent setup script that prepares the complete Python virtual environment, installs dependencies, builds the operator dashboard, creates required runtime directories, verifies model weights, and resolves Central uplink configuration:
 
-### 30.2 Virtual Environment & Dependencies
 ```bash
-# Clone the repository
 git clone https://github.com/iUjjwalRaj/RAAHI-Edge.git
 cd RAAHI-Edge
+./setup.sh
+```
 
-# Create and activate Python virtual environment
+### 30.2 Prerequisites (Detected & Validated by `./setup.sh`)
+- **Operating System**: macOS (Apple Silicon M1/M2/M3/M4 recommended) or Linux (Ubuntu 22.04+).
+- **Python**: Version `3.11` or `3.12`.
+- **Node.js**: Version `18+` or `20+` LTS (with npm).
+- **MediaMTX**: Lightweight open-source RTSP proxy server (`brew install mediamtx`).
+- **FFmpeg**: Compiled with H.264 support (`brew install ffmpeg`).
+
+### 30.3 Manual Setup (Alternative Fallback)
+If you prefer manual setup without running `./setup.sh`:
+```bash
+# 1. Python virtual environment & core dependencies
 python3 -m venv venv
 source venv/bin/activate
-
-# Install core dependencies
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Verify accelerated PyTorch MPS support
-python3 -c "import torch; print('MPS Available:', torch.backends.mps.is_available())"
-```
-
-### 30.3 Dashboard Frontend Setup
-```bash
+# 2. Operator dashboard dependencies & production build
 cd dashboard
-npm install
+npm ci || npm install
+npm run build
 cd ..
+
+# 3. Runtime directories & configuration
+mkdir -p data data/evidence captures models
+test -f .env || echo "CENTRAL_URL=https://raahi.feminismindia.com" > .env
 ```
 
 ---
 
 # 31. Operational Startup Sequence
 
-To start the complete vehicle perception environment, launch the services in the following order:
+### 31.1 Recommended: Unified Startup Supervisor
+Launch all three services (MediaMTX RTSP proxy, Edge AI pipeline API, and Vite dashboard) using the unified supervisor script:
 
-### Terminal 1: MediaMTX RTSP Server
+```bash
+./start.sh
+```
+
+Supported flags:
+- `./start.sh --check`: Non-destructive pre-flight check of all prerequisites and configs.
+- `./start.sh --no-dashboard`: Headless mode (starts only MediaMTX and Edge API server).
+- `./start.sh --no-open`: Prevents automatic browser launch on startup.
+- `./start.sh --tabs`: Opens each service in a separate macOS Terminal tab.
+- `./start.sh --kill-existing`: Automatically frees ports 8555, 5050, 5174 if previously occupied.
+
+### 31.2 Manual Multi-Terminal Startup (Alternative Fallback)
+To run services individually across separate terminal windows:
+
+#### Terminal 1: MediaMTX RTSP Server (Port 8555)
 ```bash
 cd RAAHI-Edge
 PATH="/opt/homebrew/bin:$PATH" mediamtx mediamtx.yml
 ```
-*(Listening on `rtsp://127.0.0.1:8555`)*
+*(Listening on `rtsp://127.0.0.1:8555/live`)*
 
-### Terminal 2: Android RAAHI-Eye Camera Feed
-1. Mount the Samsung S23 FE to the vehicle windshield.
-2. Connect the phone via USB or connect to the vehicle Wi-Fi hotspot.
-3. Launch the **RAAHI Eye** application (`com.example.raahieye`).
-4. Tap **Start Streaming**. Verify the status indicates `Streaming (1080p @ 30 FPS)`.
-
-### Terminal 3: Edge Pipeline Coordinator & API Server
+#### Terminal 2: Edge Pipeline Coordinator & API Server (Port 5050)
 ```bash
 cd RAAHI-Edge
 source venv/bin/activate
 PATH="/opt/homebrew/bin:/usr/local/bin:$PATH" python -m uvicorn server.api_server:app --host 0.0.0.0 --port 5050
 ```
 
-### Terminal 4: Edge Operator Dashboard UI
+#### Terminal 3: Edge Operator Dashboard UI (Port 5174)
 ```bash
 cd RAAHI-Edge/dashboard
 npm run dev
 ```
 *(Access dashboard at `http://localhost:5174`)*
+
+#### Mobile Sensing Node: Android RAAHI-Eye Feed
+1. Mount the Samsung S23 FE (or compatible Android device) to the vehicle windshield.
+2. Connect the phone and Edge machine to the same Wi-Fi network or mobile hotspot.
+3. In the RAAHI-Eye app, configure RTSP target: `rtsp://<EDGE_LAN_IP>:8555/live`.
+4. Tap **Start Streaming**. Verify status indicates `Streaming (1080p @ 30 FPS)`.
 
 ### Terminal 5: Automated Verification (Optional Sanity Check)
 ```bash

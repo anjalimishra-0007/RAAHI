@@ -59,7 +59,7 @@ export function DiagnosticsModal({ isOpen, onClose, phoneDiag }) {
             <div className="metric-row">
               <span className="metric-row-label">Phone Wi-Fi Hotspot Gateway:</span>
               <span className="metric-row-val mono" style={{ color: 'var(--accent-cyan)' }}>
-                {phoneDiag?.hotspotIp || '10.147.108.78'}
+                {phoneDiag?.hotspotIp || 'Dynamic'}
               </span>
             </div>
             <div className="metric-row">
@@ -72,7 +72,7 @@ export function DiagnosticsModal({ isOpen, onClose, phoneDiag }) {
             <div className="metric-row">
               <span className="metric-row-label">Mac Wi-Fi Host IP (MediaMTX):</span>
               <span className="metric-row-val mono" style={{ color: 'var(--live-green)' }}>
-                {phoneDiag?.macIp || '10.147.108.80'}
+                {phoneDiag?.macIp || '127.0.0.1'}
               </span>
             </div>
             <div className="metric-row">
@@ -86,7 +86,7 @@ export function DiagnosticsModal({ isOpen, onClose, phoneDiag }) {
             <div className="metric-row">
               <span className="metric-row-label">MediaMTX RTSP Target:</span>
               <span className="metric-row-val mono">
-                rtsp://{phoneDiag?.macIp || '10.147.108.80'}:8555/live
+                rtsp://{phoneDiag?.macIp || '127.0.0.1'}:8555/live
               </span>
             </div>
           </div>
