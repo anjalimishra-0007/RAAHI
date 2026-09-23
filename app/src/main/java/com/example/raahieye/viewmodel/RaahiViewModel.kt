@@ -436,7 +436,7 @@ class RaahiViewModel(application: Application) : AndroidViewModel(application), 
 
     private fun sendGpsToBackend(location: Location, isoTimestamp: String) {
         val host = _rtspConfig.value.host
-        val urlString = "http://$host:5001/api/gps"
+        val urlString = "http://$host:5050/api/gps"
 
         viewModelScope.launch(Dispatchers.IO) {
             var connection: HttpURLConnection? = null
