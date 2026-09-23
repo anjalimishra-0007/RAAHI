@@ -1,0 +1,65 @@
+# OS
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.jks
+*.keystore
+*.token*
+*credentials*
+*secret*
+
+# Python
+venv/
+.venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*.so
+.Python
+
+# Node
+node_modules/
+dist/
+
+# Build artifacts
+build/
+.gradle/
+
+# IDE
+.idea/
+.vscode/
+
+# Runtime data
+data/
+captures/
+recordings/
+logs/
+temp/
+tmp/
+
+# Media
+*.mp4
+*.m4v
+*.avi
+*.mkv
+*.mjpeg
+
+# Databases
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Local configuration
+local.properties
