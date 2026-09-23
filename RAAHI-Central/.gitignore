@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+.DS_Store?
+._*
+
+# Python environments
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+dist/
+
+# Runtime evidence and videos
+*.mp4
+*.m4v
+raahi-pothole-detection/videos/evidence/
+raahi-pothole-detection/videos/uploads/
+
+# Secrets & tokens
+*.token*
+*.key
+.env
+.env.*
+!.env.example

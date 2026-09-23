@@ -1,0 +1,921 @@
+{
+  "summary": {
+    "totalDetections": 70,
+    "potholeDetections": 69,
+    "framesProcessed": 608,
+    "videoFps": 25.0,
+    "videoDuration": 24.32
+  },
+  "detections": [
+    {
+      "id": 1,
+      "type": "pothole",
+      "confidence": 0.39,
+      "frame": 25,
+      "timestamp": "00:01.00",
+      "bbox": {
+        "x1": 0,
+        "y1": 58,
+        "x2": 73,
+        "y2": 318
+      }
+    },
+    {
+      "id": 2,
+      "type": "pothole",
+      "confidence": 0.49,
+      "frame": 82,
+      "timestamp": "00:03.28",
+      "bbox": {
+        "x1": 0,
+        "y1": 117,
+        "x2": 77,
+        "y2": 293
+      }
+    },
+    {
+      "id": 3,
+      "type": "pothole",
+      "confidence": 0.57,
+      "frame": 84,
+      "timestamp": "00:03.36",
+      "bbox": {
+        "x1": 183,
+        "y1": 45,
+        "x2": 263,
+        "y2": 129
+      }
+    },
+    {
+      "id": 4,
+      "type": "pothole",
+      "confidence": 0.4,
+      "frame": 85,
+      "timestamp": "00:03.40",
+      "bbox": {
+        "x1": 191,
+        "y1": 55,
+        "x2": 266,
+        "y2": 146
+      }
+    },
+    {
+      "id": 5,
+      "type": "pothole",
+      "confidence": 0.59,
+      "frame": 87,
+      "timestamp": "00:03.48",
+      "bbox": {
+        "x1": 181,
+        "y1": 112,
+        "x2": 249,
+        "y2": 202
+      }
+    },
+    {
+      "id": 6,
+      "type": "pothole",
+      "confidence": 0.41,
+      "frame": 88,
+      "timestamp": "00:03.52",
+      "bbox": {
+        "x1": 177,
+        "y1": 140,
+        "x2": 244,
+        "y2": 239
+      }
+    },
+    {
+      "id": 7,
+      "type": "pothole",
+      "confidence": 0.56,
+      "frame": 113,
+      "timestamp": "00:04.52",
+      "bbox": {
+        "x1": 154,
+        "y1": 12,
+        "x2": 263,
+        "y2": 99
+      }
+    },
+    {
+      "id": 8,
+      "type": "pothole",
+      "confidence": 0.56,
+      "frame": 115,
+      "timestamp": "00:04.60",
+      "bbox": {
+        "x1": 150,
+        "y1": 24,
+        "x2": 267,
+        "y2": 129
+      }
+    },
+    {
+      "id": 9,
+      "type": "pothole",
+      "confidence": 0.36,
+      "frame": 118,
+      "timestamp": "00:04.72",
+      "bbox": {
+        "x1": 145,
+        "y1": 43,
+        "x2": 285,
+        "y2": 201
+      }
+    },
+    {
+      "id": 10,
+      "type": "pothole",
+      "confidence": 0.83,
+      "frame": 119,
+      "timestamp": "00:04.76",
+      "bbox": {
+        "x1": 144,
+        "y1": 52,
+        "x2": 290,
+        "y2": 228
+      }
+    },
+    {
+      "id": 11,
+      "type": "pothole",
+      "confidence": 0.87,
+      "frame": 120,
+      "timestamp": "00:04.80",
+      "bbox": {
+        "x1": 140,
+        "y1": 65,
+        "x2": 293,
+        "y2": 266
+      }
+    },
+    {
+      "id": 12,
+      "type": "pothole",
+      "confidence": 0.85,
+      "frame": 121,
+      "timestamp": "00:04.84",
+      "bbox": {
+        "x1": 139,
+        "y1": 74,
+        "x2": 296,
+        "y2": 307
+      }
+    },
+    {
+      "id": 13,
+      "type": "pothole",
+      "confidence": 0.83,
+      "frame": 122,
+      "timestamp": "00:04.88",
+      "bbox": {
+        "x1": 145,
+        "y1": 85,
+        "x2": 312,
+        "y2": 356
+      }
+    },
+    {
+      "id": 14,
+      "type": "pothole",
+      "confidence": 0.72,
+      "frame": 123,
+      "timestamp": "00:04.92",
+      "bbox": {
+        "x1": 147,
+        "y1": 106,
+        "x2": 314,
+        "y2": 359
+      }
+    },
+    {
+      "id": 15,
+      "type": "pothole",
+      "confidence": 0.52,
+      "frame": 124,
+      "timestamp": "00:04.96",
+      "bbox": {
+        "x1": 161,
+        "y1": 112,
+        "x2": 313,
+        "y2": 358
+      }
+    },
+    {
+      "id": 16,
+      "type": "pothole",
+      "confidence": 0.7,
+      "frame": 125,
+      "timestamp": "00:05.00",
+      "bbox": {
+        "x1": 179,
+        "y1": 130,
+        "x2": 315,
+        "y2": 360
+      }
+    },
+    {
+      "id": 17,
+      "type": "pothole",
+      "confidence": 0.57,
+      "frame": 140,
+      "timestamp": "00:05.60",
+      "bbox": {
+        "x1": 166,
+        "y1": 100,
+        "x2": 233,
+        "y2": 175
+      }
+    },
+    {
+      "id": 18,
+      "type": "pothole",
+      "confidence": 0.57,
+      "frame": 141,
+      "timestamp": "00:05.64",
+      "bbox": {
+        "x1": 167,
+        "y1": 107,
+        "x2": 235,
+        "y2": 203
+      }
+    },
+    {
+      "id": 19,
+      "type": "pothole",
+      "confidence": 0.53,
+      "frame": 142,
+      "timestamp": "00:05.68",
+      "bbox": {
+        "x1": 173,
+        "y1": 122,
+        "x2": 238,
+        "y2": 225
+      }
+    },
+    {
+      "id": 20,
+      "type": "pothole",
+      "confidence": 0.55,
+      "frame": 143,
+      "timestamp": "00:05.72",
+      "bbox": {
+        "x1": 177,
+        "y1": 136,
+        "x2": 241,
+        "y2": 275
+      }
+    },
+    {
+      "id": 21,
+      "type": "pothole",
+      "confidence": 0.57,
+      "frame": 144,
+      "timestamp": "00:05.76",
+      "bbox": {
+        "x1": 177,
+        "y1": 164,
+        "x2": 260,
+        "y2": 305
+      }
+    },
+    {
+      "id": 22,
+      "type": "pothole",
+      "confidence": 0.38,
+      "frame": 144,
+      "timestamp": "00:05.76",
+      "bbox": {
+        "x1": 177,
+        "y1": 9,
+        "x2": 250,
+        "y2": 39
+      }
+    },
+    {
+      "id": 23,
+      "type": "pothole",
+      "confidence": 0.56,
+      "frame": 145,
+      "timestamp": "00:05.80",
+      "bbox": {
+        "x1": 179,
+        "y1": 188,
+        "x2": 267,
+        "y2": 352
+      }
+    },
+    {
+      "id": 24,
+      "type": "pothole",
+      "confidence": 0.37,
+      "frame": 145,
+      "timestamp": "00:05.80",
+      "bbox": {
+        "x1": 178,
+        "y1": 12,
+        "x2": 248,
+        "y2": 43
+      }
+    },
+    {
+      "id": 25,
+      "type": "pothole",
+      "confidence": 0.36,
+      "frame": 147,
+      "timestamp": "00:05.88",
+      "bbox": {
+        "x1": 179,
+        "y1": 22,
+        "x2": 251,
+        "y2": 55
+      }
+    },
+    {
+      "id": 26,
+      "type": "pothole",
+      "confidence": 0.51,
+      "frame": 149,
+      "timestamp": "00:05.96",
+      "bbox": {
+        "x1": 183,
+        "y1": 35,
+        "x2": 251,
+        "y2": 68
+      }
+    },
+    {
+      "id": 27,
+      "type": "pothole",
+      "confidence": 0.38,
+      "frame": 151,
+      "timestamp": "00:06.04",
+      "bbox": {
+        "x1": 178,
+        "y1": 45,
+        "x2": 255,
+        "y2": 91
+      }
+    },
+    {
+      "id": 28,
+      "type": "pothole",
+      "confidence": 0.59,
+      "frame": 153,
+      "timestamp": "00:06.12",
+      "bbox": {
+        "x1": 195,
+        "y1": 73,
+        "x2": 257,
+        "y2": 115
+      }
+    },
+    {
+      "id": 29,
+      "type": "pothole",
+      "confidence": 0.64,
+      "frame": 154,
+      "timestamp": "00:06.16",
+      "bbox": {
+        "x1": 199,
+        "y1": 84,
+        "x2": 261,
+        "y2": 131
+      }
+    },
+    {
+      "id": 30,
+      "type": "pothole",
+      "confidence": 0.56,
+      "frame": 155,
+      "timestamp": "00:06.20",
+      "bbox": {
+        "x1": 197,
+        "y1": 100,
+        "x2": 266,
+        "y2": 152
+      }
+    },
+    {
+      "id": 31,
+      "type": "pothole",
+      "confidence": 0.61,
+      "frame": 156,
+      "timestamp": "00:06.24",
+      "bbox": {
+        "x1": 198,
+        "y1": 115,
+        "x2": 286,
+        "y2": 175
+      }
+    },
+    {
+      "id": 32,
+      "type": "pothole",
+      "confidence": 0.66,
+      "frame": 157,
+      "timestamp": "00:06.28",
+      "bbox": {
+        "x1": 198,
+        "y1": 127,
+        "x2": 285,
+        "y2": 211
+      }
+    },
+    {
+      "id": 33,
+      "type": "pothole",
+      "confidence": 0.68,
+      "frame": 158,
+      "timestamp": "00:06.32",
+      "bbox": {
+        "x1": 211,
+        "y1": 159,
+        "x2": 294,
+        "y2": 247
+      }
+    },
+    {
+      "id": 34,
+      "type": "pothole",
+      "confidence": 0.66,
+      "frame": 159,
+      "timestamp": "00:06.36",
+      "bbox": {
+        "x1": 215,
+        "y1": 183,
+        "x2": 310,
+        "y2": 296
+      }
+    },
+    {
+      "id": 35,
+      "type": "pothole",
+      "confidence": 0.59,
+      "frame": 160,
+      "timestamp": "00:06.40",
+      "bbox": {
+        "x1": 217,
+        "y1": 191,
+        "x2": 330,
+        "y2": 355
+      }
+    },
+    {
+      "id": 36,
+      "type": "pothole",
+      "confidence": 0.49,
+      "frame": 187,
+      "timestamp": "00:07.48",
+      "bbox": {
+        "x1": 7,
+        "y1": 128,
+        "x2": 102,
+        "y2": 281
+      }
+    },
+    {
+      "id": 37,
+      "type": "pothole",
+      "confidence": 0.44,
+      "frame": 203,
+      "timestamp": "00:08.12",
+      "bbox": {
+        "x1": 48,
+        "y1": 91,
+        "x2": 121,
+        "y2": 259
+      }
+    },
+    {
+      "id": 38,
+      "type": "pothole",
+      "confidence": 0.39,
+      "frame": 204,
+      "timestamp": "00:08.16",
+      "bbox": {
+        "x1": 34,
+        "y1": 103,
+        "x2": 109,
+        "y2": 301
+      }
+    },
+    {
+      "id": 39,
+      "type": "pothole",
+      "confidence": 0.53,
+      "frame": 209,
+      "timestamp": "00:08.36",
+      "bbox": {
+        "x1": 242,
+        "y1": 118,
+        "x2": 316,
+        "y2": 313
+      }
+    },
+    {
+      "id": 40,
+      "type": "pothole",
+      "confidence": 0.36,
+      "frame": 228,
+      "timestamp": "00:09.12",
+      "bbox": {
+        "x1": 74,
+        "y1": 63,
+        "x2": 151,
+        "y2": 318
+      }
+    },
+    {
+      "id": 41,
+      "type": "pothole",
+      "confidence": 0.55,
+      "frame": 265,
+      "timestamp": "00:10.60",
+      "bbox": {
+        "x1": 167,
+        "y1": 76,
+        "x2": 259,
+        "y2": 143
+      }
+    },
+    {
+      "id": 42,
+      "type": "pothole",
+      "confidence": 0.51,
+      "frame": 266,
+      "timestamp": "00:10.64",
+      "bbox": {
+        "x1": 168,
+        "y1": 90,
+        "x2": 263,
+        "y2": 169
+      }
+    },
+    {
+      "id": 43,
+      "type": "pothole",
+      "confidence": 0.39,
+      "frame": 267,
+      "timestamp": "00:10.68",
+      "bbox": {
+        "x1": 170,
+        "y1": 113,
+        "x2": 277,
+        "y2": 204
+      }
+    },
+    {
+      "id": 44,
+      "type": "pothole",
+      "confidence": 0.81,
+      "frame": 268,
+      "timestamp": "00:10.72",
+      "bbox": {
+        "x1": 171,
+        "y1": 123,
+        "x2": 291,
+        "y2": 252
+      }
+    },
+    {
+      "id": 45,
+      "type": "pothole",
+      "confidence": 0.46,
+      "frame": 269,
+      "timestamp": "00:10.76",
+      "bbox": {
+        "x1": 176,
+        "y1": 118,
+        "x2": 303,
+        "y2": 313
+      }
+    },
+    {
+      "id": 46,
+      "type": "pothole",
+      "confidence": 0.52,
+      "frame": 331,
+      "timestamp": "00:13.24",
+      "bbox": {
+        "x1": 56,
+        "y1": 130,
+        "x2": 101,
+        "y2": 199
+      }
+    },
+    {
+      "id": 47,
+      "type": "pothole",
+      "confidence": 0.38,
+      "frame": 331,
+      "timestamp": "00:13.24",
+      "bbox": {
+        "x1": 68,
+        "y1": 131,
+        "x2": 98,
+        "y2": 161
+      }
+    },
+    {
+      "id": 48,
+      "type": "pothole",
+      "confidence": 0.36,
+      "frame": 333,
+      "timestamp": "00:13.32",
+      "bbox": {
+        "x1": 36,
+        "y1": 185,
+        "x2": 82,
+        "y2": 291
+      }
+    },
+    {
+      "id": 49,
+      "type": "pothole",
+      "confidence": 0.41,
+      "frame": 356,
+      "timestamp": "00:14.24",
+      "bbox": {
+        "x1": 91,
+        "y1": 8,
+        "x2": 167,
+        "y2": 205
+      }
+    },
+    {
+      "id": 50,
+      "type": "pothole",
+      "confidence": 0.42,
+      "frame": 362,
+      "timestamp": "00:14.48",
+      "bbox": {
+        "x1": 53,
+        "y1": 97,
+        "x2": 109,
+        "y2": 190
+      }
+    },
+    {
+      "id": 51,
+      "type": "pothole",
+      "confidence": 0.38,
+      "frame": 373,
+      "timestamp": "00:14.92",
+      "bbox": {
+        "x1": 58,
+        "y1": 37,
+        "x2": 135,
+        "y2": 293
+      }
+    },
+    {
+      "id": 52,
+      "type": "pothole",
+      "confidence": 0.55,
+      "frame": 375,
+      "timestamp": "00:15.00",
+      "bbox": {
+        "x1": 51,
+        "y1": 34,
+        "x2": 127,
+        "y2": 287
+      }
+    },
+    {
+      "id": 53,
+      "type": "pothole",
+      "confidence": 0.56,
+      "frame": 376,
+      "timestamp": "00:15.04",
+      "bbox": {
+        "x1": 52,
+        "y1": 58,
+        "x2": 135,
+        "y2": 296
+      }
+    },
+    {
+      "id": 54,
+      "type": "pothole",
+      "confidence": 0.62,
+      "frame": 377,
+      "timestamp": "00:15.08",
+      "bbox": {
+        "x1": 49,
+        "y1": 62,
+        "x2": 135,
+        "y2": 295
+      }
+    },
+    {
+      "id": 55,
+      "type": "pothole",
+      "confidence": 0.5,
+      "frame": 378,
+      "timestamp": "00:15.12",
+      "bbox": {
+        "x1": 45,
+        "y1": 61,
+        "x2": 134,
+        "y2": 290
+      }
+    },
+    {
+      "id": 56,
+      "type": "pothole",
+      "confidence": 0.56,
+      "frame": 392,
+      "timestamp": "00:15.68",
+      "bbox": {
+        "x1": 178,
+        "y1": 0,
+        "x2": 262,
+        "y2": 63
+      }
+    },
+    {
+      "id": 57,
+      "type": "pothole",
+      "confidence": 0.48,
+      "frame": 397,
+      "timestamp": "00:15.88",
+      "bbox": {
+        "x1": 172,
+        "y1": 7,
+        "x2": 275,
+        "y2": 145
+      }
+    },
+    {
+      "id": 58,
+      "type": "pothole",
+      "confidence": 0.75,
+      "frame": 398,
+      "timestamp": "00:15.92",
+      "bbox": {
+        "x1": 171,
+        "y1": 12,
+        "x2": 286,
+        "y2": 171
+      }
+    },
+    {
+      "id": 59,
+      "type": "pothole",
+      "confidence": 0.82,
+      "frame": 399,
+      "timestamp": "00:15.96",
+      "bbox": {
+        "x1": 171,
+        "y1": 25,
+        "x2": 289,
+        "y2": 208
+      }
+    },
+    {
+      "id": 60,
+      "type": "pothole",
+      "confidence": 0.82,
+      "frame": 400,
+      "timestamp": "00:16.00",
+      "bbox": {
+        "x1": 171,
+        "y1": 32,
+        "x2": 305,
+        "y2": 251
+      }
+    },
+    {
+      "id": 61,
+      "type": "pothole",
+      "confidence": 0.8,
+      "frame": 401,
+      "timestamp": "00:16.04",
+      "bbox": {
+        "x1": 170,
+        "y1": 35,
+        "x2": 316,
+        "y2": 317
+      }
+    },
+    {
+      "id": 62,
+      "type": "pothole",
+      "confidence": 0.76,
+      "frame": 402,
+      "timestamp": "00:16.08",
+      "bbox": {
+        "x1": 168,
+        "y1": 49,
+        "x2": 317,
+        "y2": 344
+      }
+    },
+    {
+      "id": 63,
+      "type": "pothole",
+      "confidence": 0.81,
+      "frame": 403,
+      "timestamp": "00:16.12",
+      "bbox": {
+        "x1": 173,
+        "y1": 66,
+        "x2": 322,
+        "y2": 359
+      }
+    },
+    {
+      "id": 64,
+      "type": "pothole",
+      "confidence": 0.76,
+      "frame": 404,
+      "timestamp": "00:16.16",
+      "bbox": {
+        "x1": 173,
+        "y1": 80,
+        "x2": 323,
+        "y2": 359
+      }
+    },
+    {
+      "id": 65,
+      "type": "pothole",
+      "confidence": 0.79,
+      "frame": 405,
+      "timestamp": "00:16.20",
+      "bbox": {
+        "x1": 176,
+        "y1": 102,
+        "x2": 325,
+        "y2": 359
+      }
+    },
+    {
+      "id": 66,
+      "type": "pothole",
+      "confidence": 0.75,
+      "frame": 406,
+      "timestamp": "00:16.24",
+      "bbox": {
+        "x1": 183,
+        "y1": 102,
+        "x2": 353,
+        "y2": 359
+      }
+    },
+    {
+      "id": 67,
+      "type": "pothole",
+      "confidence": 0.64,
+      "frame": 407,
+      "timestamp": "00:16.28",
+      "bbox": {
+        "x1": 187,
+        "y1": 141,
+        "x2": 330,
+        "y2": 360
+      }
+    },
+    {
+      "id": 68,
+      "type": "pothole",
+      "confidence": 0.42,
+      "frame": 515,
+      "timestamp": "00:20.60",
+      "bbox": {
+        "x1": 58,
+        "y1": 65,
+        "x2": 122,
+        "y2": 153
+      }
+    },
+    {
+      "id": 69,
+      "type": "pothole",
+      "confidence": 0.53,
+      "frame": 571,
+      "timestamp": "00:22.84",
+      "bbox": {
+        "x1": 35,
+        "y1": 222,
+        "x2": 88,
+        "y2": 317
+      }
+    },
+    {
+      "id": 70,
+      "type": "circle-drain-clean-",
+      "confidence": 0.41,
+      "frame": 604,
+      "timestamp": "00:24.16",
+      "bbox": {
+        "x1": 0,
+        "y1": 0,
+        "x2": 81,
+        "y2": 162
+      }
+    }
+  ]
+}

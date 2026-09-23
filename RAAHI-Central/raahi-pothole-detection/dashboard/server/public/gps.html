@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>RAAHI GPS Sender</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #090f1d;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .header-card {
+      background: linear-gradient(135deg, rgba(31, 143, 255, 0.15), rgba(0, 255, 196, 0.1));
+      border: 1px solid rgba(0, 255, 196, 0.3);
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+    }
+    .icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 4px;
+    }
+    p.subtitle {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-top: 14px;
+      background: rgba(100, 116, 139, 0.2);
+      color: #94a3b8;
+      border: 1px solid #475569;
+    }
+    .status-badge.connected {
+      background: rgba(0, 255, 196, 0.15);
+      color: #00ffc4;
+      border-color: #00ffc4;
+    }
+    .status-badge.acquiring {
+      background: rgba(255, 176, 32, 0.15);
+      color: #ffb020;
+      border-color: #ffb020;
+    }
+    .status-badge.error {
+      background: rgba(255, 73, 108, 0.15);
+      color: #ff496c;
+      border-color: #ff496c;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: 14px;
+      font-size: 17px;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .btn-start {
+      background: linear-gradient(135deg, #00ffc4, #00b4d8);
+      color: #04101d;
+      box-shadow: 0 8px 20px rgba(0, 255, 196, 0.3);
+    }
+    .btn-stop {
+      background: rgba(255, 73, 108, 0.15);
+      color: #ff496c;
+      border: 2px solid #ff496c;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .card-label {
+      font-size: 11px;
+      color: #64748b;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .card-val {
+      font-size: 17px;
+      font-weight: 800;
+      color: #38bdf8;
+      margin-top: 4px;
+    }
+    .diag {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .diag-row {
+      display: flex;
+      justify-content: space-between;
+    }
+    .diag-label { color: #64748b; }
+    .diag-val { color: #f8fafc; font-weight: 600; }
+    .alert-box {
+      background: rgba(255, 73, 108, 0.12);
+      border: 1px solid rgba(255, 73, 108, 0.35);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 13px;
+      color: #ff859c;
+    }
+    .security-notice {
+      background: rgba(255, 176, 32, 0.1);
+      border: 1px solid rgba(255, 176, 32, 0.35);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 12px;
+      color: #cbd5e1;
+      line-height: 1.4;
+    }
+    .security-notice b { color: #ffb020; }
+    .security-notice code { color: #00ffc4; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-card">
+      <div class="icon">📍</div>
+      <h1>RAAHI GPS Sender</h1>
+      <p class="subtitle">Mobile Wi-Fi Telemetry Transmitter</p>
+      <div>
+        <div id="statusBadge" class="status-badge">
+          <span class="dot"></span>
+          <span id="statusText">GPS Status: Standby</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Security notice if not in secure context -->
+    <div id="secNotice" class="security-notice" style="display: none;">
+      <b>⚠️ Browser Security Notice (HTTP LAN):</b><br>
+      Mobile browsers (iOS Safari, Android Chrome) require a Secure Context for <code>navigator.geolocation</code>.<br>
+      • <b>Android Chrome</b>: Go to <code>chrome://flags/#unsafely-treat-insecure-origin-as-secure</code>, add this URL, tap Enable & Relaunch.<br>
+      • <b>Local HTTPS</b>: Open the dashboard via HTTPS.
+    </div>
+
+    <div id="errBox" class="alert-box" style="display: none;"></div>
+
+    <button id="toggleBtn" class="btn btn-start">▶ Start GPS</button>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-label">Latitude</div>
+        <div id="latVal" class="card-val">— — —</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Longitude</div>
+        <div id="lngVal" class="card-val">— — —</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Accuracy</div>
+        <div id="accVal" class="card-val" style="color: #00ffc4">— — —</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Last Sent</div>
+        <div id="timeVal" class="card-val" style="font-size: 15px; color: #f8fafc">— — —</div>
+      </div>
+    </div>
+
+    <div class="diag">
+      <div class="diag-row">
+        <span class="diag-label">Target Endpoint:</span>
+        <span class="diag-val" style="color: #38bdf8">POST /api/gps</span>
+      </div>
+      <div class="diag-row">
+        <span class="diag-label">Packets Transmitted:</span>
+        <span id="packCount" class="diag-val">0</span>
+      </div>
+      <div class="diag-row">
+        <span class="diag-label">API Response:</span>
+        <span id="apiResp" class="diag-val" style="color: #94a3b8">Idle</span>
+      </div>
+      <div class="diag-row">
+        <span class="diag-label">Bus ID:</span>
+        <span class="diag-val">RAAHI-01</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const isSecure = window.isSecureContext || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (!isSecure) {
+      document.getElementById('secNotice').style.display = 'block';
+    }
+
+    let watchId = null;
+    let packetCount = 0;
+
+    const toggleBtn = document.getElementById('toggleBtn');
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+    const errBox = document.getElementById('errBox');
+    const latVal = document.getElementById('latVal');
+    const lngVal = document.getElementById('lngVal');
+    const accVal = document.getElementById('accVal');
+    const timeVal = document.getElementById('timeVal');
+    const packCount = document.getElementById('packCount');
+    const apiResp = document.getElementById('apiResp');
+
+    function updateStatus(state, text) {
+      statusBadge.className = 'status-badge ' + state;
+      statusText.textContent = 'GPS Status: ' + text;
+    }
+
+    async function sendGps(coords, timestamp) {
+      const payload = {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        accuracy: coords.accuracy ? Math.round(coords.accuracy * 10) / 10 : null,
+        timestamp: new Date(timestamp).toISOString()
+      };
+
+      try {
+        const res = await fetch('/api/gps', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          packetCount++;
+          packCount.textContent = packetCount;
+          timeVal.textContent = new Date().toLocaleTimeString();
+          apiResp.textContent = '200 OK • Live';
+          apiResp.style.color = '#00ffc4';
+          updateStatus('connected', 'Connected');
+        } else {
+          apiResp.textContent = 'HTTP ' + res.status + ' Error';
+          apiResp.style.color = '#ff496c';
+        }
+      } catch (err) {
+        apiResp.textContent = 'Error: ' + err.message;
+        apiResp.style.color = '#ff496c';
+      }
+    }
+
+    function startGps() {
+      errBox.style.display = 'none';
+      if (!navigator.geolocation) {
+        errBox.textContent = 'Geolocation is not supported by your browser.';
+        errBox.style.display = 'block';
+        updateStatus('error', 'Error');
+        return;
+      }
+
+      updateStatus('acquiring', 'Acquiring...');
+      toggleBtn.textContent = '⏹ Stop GPS';
+      toggleBtn.className = 'btn btn-stop';
+
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          latVal.textContent = pos.coords.latitude.toFixed(6);
+          lngVal.textContent = pos.coords.longitude.toFixed(6);
+          accVal.textContent = '±' + Math.round(pos.coords.accuracy * 10) / 10 + ' m';
+          sendGps(pos.coords, pos.timestamp);
+        },
+        (err) => {
+          let msg = 'Failed to acquire GPS position.';
+          if (err.code === err.PERMISSION_DENIED) {
+            msg = 'Location permission denied. Please allow location access in browser settings.';
+          } else if (err.code === err.POSITION_UNAVAILABLE) {
+            msg = 'Position unavailable. Check that phone Location / GPS is turned ON.';
+          } else if (err.code === err.TIMEOUT) {
+            msg = 'GPS request timed out. Searching for satellites...';
+          }
+          errBox.textContent = msg;
+          errBox.style.display = 'block';
+          updateStatus('error', 'Error');
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+      );
+    }
+
+    function stopGps() {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+      updateStatus('', 'Standby');
+      toggleBtn.textContent = '▶ Start GPS';
+      toggleBtn.className = 'btn btn-start';
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      if (watchId === null) {
+        startGps();
+      } else {
+        stopGps();
+      }
+    });
+  </script>
+</body>
+</html>
