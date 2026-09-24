@@ -90,14 +90,13 @@ RAAHI/
 
 ---
 
-## Screenshots & Demo
+## Screenshots / Demo
 
-| Edge AI Pothole Detection | Municipal Command Center |
-| :---: | :---: |
-| ![Pothole Detection Sample](./RAAHI-Central/results/images/test_predictions/test_pred_01.jpg) | *(See [RAAHI-Central Documentation](./RAAHI-Central/README.md) for live dashboard previews)* |
-| *Real-time bounding box and confidence score* | *Geospatial hazard mapping and candidate review* |
+![Pothole Detection Sample](./RAAHI-Central/results/images/test_predictions/test_pred_01.jpg)
 
-> For complete visual demonstrations, camera configurations, and dashboard screen walkthroughs, refer to the component documentation in [`RAAHI-Edge/README.md`](./RAAHI-Edge/README.md) and [`RAAHI-Central/README.md`](./RAAHI-Central/README.md).
+*Example of real-time pothole detection with bounding box and confidence score.*
+
+For complete dashboard views, camera streaming pipelines, and detailed system walkthroughs, refer to the individual component documentation below.
 
 ---
 
