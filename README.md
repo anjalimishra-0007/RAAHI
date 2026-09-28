@@ -135,3 +135,19 @@ Comprehensive setup instructions, API references, configuration guides, and arch
 ---
 
 > Safer Roads. Smarter Cities. Brighter Journeys.
+
+---
+
+## License
+
+Proprietary Software
+
+Copyright © 2026 Team KhojYatra. All rights reserved.
+
+The RAAHI source code may be publicly available on GitHub for
+evaluation and project verification, but it is not open-source software.
+Access to, downloading, cloning, or forking the repository does not grant
+permission to reuse, modify, distribute, deploy, or commercially exploit
+the software without prior written permission from the copyright holder.
+
+See [LICENSE](LICENSE) for the complete terms.

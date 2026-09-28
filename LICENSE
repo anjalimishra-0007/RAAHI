@@ -1,0 +1,39 @@
+PROPRIETARY SOFTWARE LICENSE
+SOURCE-AVAILABLE / ALL RIGHTS RESERVED
+
+Copyright © 2026 Team KhojYatra. All rights reserved.
+
+This license governs the access, viewing, evaluation, and use of the RAAHI software repository, source code, documentation, scripts, configurations, models, datasets, and associated materials (collectively, the "Software").
+
+1. PROPRIETARY STATUS & INTENDED ACCESS MODEL
+The Software is the proprietary intellectual property of Team KhojYatra ("Copyright Holder"). The Software is NOT open-source software, free software, or in the public domain. The Software may be made temporarily or permanently accessible via public repository hosting platforms (such as GitHub) strictly to facilitate evaluation, academic inspection, project verification, and authorized review by judges, evaluators, and examiners. Public repository accessibility does not constitute a waiver of copyright, dedication to the public domain, or a grant of any implied license or rights beyond what is expressly articulated herein.
+
+2. LIMITED PERMITTED USE (EVALUATION AND INSPECTION)
+You are granted a limited, non-exclusive, non-transferable, and non-sublicensable permission to access, view, inspect, and, where reasonably necessary for evaluation, project verification, judging, examination, educational review, or authorized academic inspection, execute the Software solely for those purposes.
+
+Platform-supported interactions—including browsing, downloading, cloning, or forking the public repository through GitHub or any similar hosting platform—are recognized as technical features of the host platform. However, such platform-supported access or acquisition does NOT convey, transfer, or imply any copyright license or permission to reuse, reproduce, modify, distribute, deploy, or commercially exploit the Software.
+
+3. PROHIBITED USES AND RESTRICTIONS
+Except as expressly authorized in advance and in writing by the Copyright Holder, you shall not, directly or indirectly:
+(a) Reuse, reproduce, duplicate, or mirror the Software or any portion thereof for deployment, distribution, or inclusion in any other project, codebase, or product;
+(b) Modify, adapt, translate, enhance, alter, refactor, or create derivative works based upon the Software or any portion thereof;
+(c) Distribute, publish, broadcast, transmit, share, sell, rent, lease, sublicense, loan, assign, or otherwise transfer the Software or any portion thereof to any third party;
+(d) Run, execute, or deploy the Software for commercial, production, organizational, governmental, or revenue-generating operational purposes, except where such execution is solely for evaluation, academic inspection, project verification, judging, examination, or authorized review of the Software;
+(e) Sublicense, assign, or delegate any rights under this License;
+(f) Decompile, disassemble, or reverse-engineer the proprietary algorithms, models, architecture, or software components, except to the extent mandatory applicable law prohibits such restriction;
+(g) Remove, obscure, deface, or alter any copyright notice, trademark, attribution, disclaimer, or proprietary rights legend appearing in or on the Software.
+
+4. SEPARATE WRITTEN PERMISSION
+Any use, commercial exploitation, production deployment, modification, distribution, or licensing of the Software not expressly permitted by this License may only be granted through a separate, explicit written agreement executed by the Copyright Holder. For licensing inquiries, permissions, or partnership requests, contact the Copyright Holder.
+
+5. THIRD-PARTY COMPONENTS AND LICENSES
+The Software incorporates, interfaces with, references, or depends upon third-party software libraries, frameworks, open-source utilities, machine learning architectures, pre-trained weights, datasets, and developer tools. All such third-party components remain the intellectual property of their respective owners and remain subject to their respective original licenses and terms of use. Nothing in this License asserts ownership over, alters, restricts, or supersedes the licensing terms applicable to any third-party components, models, or datasets.
+
+6. DISCLAIMER OF WARRANTIES
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY OF ANY KIND, EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, ACCURACY, AND NON-INFRINGEMENT. THE COPYRIGHT HOLDER DOES NOT WARRANT THAT THE SOFTWARE WILL BE UNINTERRUPTED, SECURE, TIMELY, OR ERROR-FREE.
+
+7. LIMITATION OF LIABILITY
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE COPYRIGHT HOLDER, CONTRIBUTORS, OR AFFILIATES BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, PUNITIVE, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, REVENUE, OR PROFITS; OR BUSINESS INTERRUPTION) ARISING IN ANY WAY OUT OF ACCESS TO, VIEWING OF, USE OF, OR INABILITY TO ACCESS OR VIEW THE SOFTWARE, UNDER ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE), EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+8. RESERVATION OF RIGHTS
+All rights, title, ownership, and intellectual property interests in and to the Software not expressly granted under this License are strictly and exclusively reserved by the Copyright Holder.
