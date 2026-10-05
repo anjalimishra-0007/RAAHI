@@ -124,11 +124,11 @@ Comprehensive setup instructions, API references, configuration guides, and arch
 | Member | Role |
 | :--- | :--- |
 | [Ujjwal Raj](https://github.com/iUjjwalRaj) | Lead Developer & System Architect |
-| [Samar Kumar](https://github.com/samarkumar4355) | Team Leader |
-| [Kunal](https://github.com/Kunal988-gif) | Frontend Contributor |
-| [Anjali Mishra](https://github.com/anjalimishra-0007) | Team Member |
-| [Molly Arora](https://github.com/Molly-Arora02) | Team Member |
-| [Utkarsh Patwa](https://github.com/utkarshpatwa393-sys) | Team Member |
+| [Samar Kumar](https://github.com/samarkumar4355) | Team Lead & AI/ML Engineer |
+| [Kunal](https://github.com/Kunal988-gif) | Frontend Developer & GIS Developer |
+| [Anjali Mishra](https://github.com/anjalimishra-0007) | Backend Developer &  Creative Designer & Integration Engineer |
+| [Molly Arora](https://github.com/Molly-Arora02) | Research, Testing & Media Lead |
+| [Utkarsh Patwa](https://github.com/utkarshpatwa393-sys) | Documentation & Technical Communications |
 
 > Roles marked as "Team Member" will be updated as the team's individual responsibilities are finalized.
 
